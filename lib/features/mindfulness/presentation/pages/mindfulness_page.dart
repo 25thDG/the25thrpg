@@ -53,7 +53,7 @@ class _MindfulnessPageState extends State<MindfulnessPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Mindfulness'),
+        title: const Text('MINDFULNESS'),
         centerTitle: false,
         actions: [
           ListenableBuilder(

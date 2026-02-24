@@ -178,7 +178,7 @@ class _ChartPainter extends CustomPainter {
       final isLast = i == history.length - 1;
       // White fill with colored border for the last point.
       if (isLast) {
-        canvas.drawCircle(o, 5, Paint()..color = Colors.white);
+        canvas.drawCircle(o, 5, Paint()..color = const Color(0xFF131318));
         canvas.drawCircle(
           o,
           5,

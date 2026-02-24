@@ -63,9 +63,6 @@ class _CreationPageState extends State<CreationPage> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
       builder: (_) => CreationAddSessionSheet(
         activeProjects: state.stats?.activeProjects ?? [],
         isBusy: state.isBusy,
@@ -79,7 +76,7 @@ class _CreationPageState extends State<CreationPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Creation'),
+        title: const Text('CREATION'),
         centerTitle: false,
         actions: [
           ListenableBuilder(

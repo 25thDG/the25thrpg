@@ -57,7 +57,7 @@ class _CreationAddSessionSheetState extends State<CreationAddSessionSheet> {
     if (!mounted) return;
     if (error != null) {
       ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(error), backgroundColor: Colors.red));
+          .showSnackBar(SnackBar(content: Text(error), backgroundColor: Theme.of(context).colorScheme.error));
     } else {
       Navigator.pop(context);
     }

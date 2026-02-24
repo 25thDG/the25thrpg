@@ -77,7 +77,7 @@ class _WealthMonthlyInputSectionState
     final error = await widget.onSave(value);
     if (error != null && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error), backgroundColor: Colors.red),
+        SnackBar(content: Text(error), backgroundColor: Theme.of(context).colorScheme.error),
       );
     }
   }
@@ -107,7 +107,7 @@ class _WealthMonthlyInputSectionState
         await widget.onDelete(widget.currentMonthSnapshot!.id);
     if (error != null && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error), backgroundColor: Colors.red),
+        SnackBar(content: Text(error), backgroundColor: Theme.of(context).colorScheme.error),
       );
     }
   }

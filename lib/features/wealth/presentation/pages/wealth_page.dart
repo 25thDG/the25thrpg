@@ -49,7 +49,7 @@ class _WealthPageState extends State<WealthPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Wealth'),
+        title: const Text('WEALTH'),
         centerTitle: false,
         actions: [
           ListenableBuilder(

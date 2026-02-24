@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'core/theme/app_theme.dart';
 import 'features/creation/presentation/pages/creation_page.dart';
 import 'features/japanese/presentation/pages/japanese_page.dart';
 import 'features/mindfulness/presentation/pages/mindfulness_page.dart';
@@ -28,10 +29,7 @@ class App extends StatelessWidget {
     return MaterialApp(
       title: 'The 25th',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF5C6BC0)),
-        useMaterial3: true,
-      ),
+      theme: AppTheme.dark,
       home: const _Shell(),
     );
   }

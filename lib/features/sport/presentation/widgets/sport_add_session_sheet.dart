@@ -39,7 +39,7 @@ class _SportAddSessionSheetState extends State<SportAddSessionSheet> {
 
     if (error != null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error), backgroundColor: Colors.red),
+        SnackBar(content: Text(error), backgroundColor: Theme.of(context).colorScheme.error),
       );
       return;
     }

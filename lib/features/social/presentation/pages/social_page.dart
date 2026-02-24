@@ -53,9 +53,6 @@ class _SocialPageState extends State<SocialPage> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
       builder: (_) => SocialAddSessionSheet(
         isBusy: state.isBusy,
         onSave: _controller.addSession,
@@ -67,7 +64,7 @@ class _SocialPageState extends State<SocialPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Social'),
+        title: const Text('SOCIAL'),
         centerTitle: false,
         actions: [
           ListenableBuilder(

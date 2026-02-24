@@ -54,9 +54,6 @@ class _SportPageState extends State<SportPage> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
       builder: (_) => SportAddSessionSheet(
         isBusy: state.isBusy,
         onSave: _controller.addSession,
@@ -68,7 +65,7 @@ class _SportPageState extends State<SportPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Sport'),
+        title: const Text('SPORT'),
         centerTitle: false,
         actions: [
           ListenableBuilder(

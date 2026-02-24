@@ -53,7 +53,7 @@ class _JapanesePageState extends State<JapanesePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Japanese Mastery'),
+        title: const Text('JAPANESE'),
         centerTitle: false,
         actions: [
           ListenableBuilder(

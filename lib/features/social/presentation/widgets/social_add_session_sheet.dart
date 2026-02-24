@@ -36,7 +36,7 @@ class _SocialAddSessionSheetState extends State<SocialAddSessionSheet> {
     if (!mounted) return;
     if (error != null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error), backgroundColor: Colors.red),
+        SnackBar(content: Text(error), backgroundColor: Theme.of(context).colorScheme.error),
       );
     } else {
       Navigator.pop(context);
