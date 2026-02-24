@@ -5,25 +5,14 @@ import '../models/social_session_model.dart';
 
 // Single user — UUID hardcoded in data layer only.
 const _userId = '1a67d50e-4263-4923-b4bc-1bfa57426aae';
+// Single skill — UUID hardcoded in data layer only.
+const _skillId = 'a3870777-b8a7-433f-aa32-363799edfbd5';
 
 class SocialSupabaseDatasource {
   final SupabaseClient _client;
 
   SocialSupabaseDatasource(this._client);
-
-  // Cached skill ID resolved from the skills table.
-  String? _skillId;
-
-  Future<String> _resolveSkillId() async {
-    if (_skillId != null) return _skillId!;
-    final res = await _client
-        .from('skills')
-        .select('id')
-        .eq('name', 'Social')
-        .single();
-    _skillId = res['id'] as String;
-    return _skillId!;
-  }
+   
 
   (String, String) _todayUtcRange() {
     final now = DateTime.now();
@@ -36,12 +25,11 @@ class SocialSupabaseDatasource {
   }
 
   Future<List<SocialSession>> getAllActiveSessions() async {
-    final skillId = await _resolveSkillId();
     final res = await _client
         .from('skill_sessions')
         .select()
         .eq('user_id', _userId)
-        .eq('skill_id', skillId)
+        .eq('skill_id', _skillId)
         .isFilter('deleted_at', null)
         .order('session_at', ascending: true);
     return (res as List)
@@ -51,13 +39,12 @@ class SocialSupabaseDatasource {
   }
 
   Future<List<SocialSession>> getTodaySessions() async {
-    final skillId = await _resolveSkillId();
     final (start, end) = _todayUtcRange();
     final res = await _client
         .from('skill_sessions')
         .select()
         .eq('user_id', _userId)
-        .eq('skill_id', skillId)
+        .eq('skill_id', _skillId)
         .isFilter('deleted_at', null)
         .gte('session_at', start)
         .lt('session_at', end)
@@ -73,12 +60,11 @@ class SocialSupabaseDatasource {
     required int minutes,
     required DateTime sessionAt,
   }) async {
-    final skillId = await _resolveSkillId();
     final res = await _client
         .from('skill_sessions')
         .insert({
           'user_id': _userId,
-          'skill_id': skillId,
+          'skill_id': _skillId,
           'category':
               initiationType == InitiationType.self ? 'self' : 'other',
           'minutes': minutes,
