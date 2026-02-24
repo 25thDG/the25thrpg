@@ -4,7 +4,9 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'features/creation/presentation/pages/creation_page.dart';
 import 'features/japanese/presentation/pages/japanese_page.dart';
 import 'features/mindfulness/presentation/pages/mindfulness_page.dart';
+import 'features/player/presentation/pages/player_page.dart';
 import 'features/social/presentation/pages/social_page.dart';
+import 'features/sport/presentation/pages/sport_page.dart';
 import 'features/wealth/presentation/pages/wealth_page.dart';
 
 Future<void> main() async {
@@ -46,24 +48,28 @@ class _ShellState extends State<_Shell> {
   int _index = 0;
 
   static const _pages = <Widget>[
+    PlayerPage(),
     JapanesePage(),
     MindfulnessPage(),
     WealthPage(),
     CreationPage(),
     SocialPage(),
+    SportPage(),
   ];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: IndexedStack(
-        index: _index,
-        children: _pages,
-      ),
+      body: IndexedStack(index: _index, children: _pages),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _index,
         onDestinationSelected: (i) => setState(() => _index = i),
         destinations: const [
+          NavigationDestination(
+            icon: Icon(Icons.person_outline),
+            selectedIcon: Icon(Icons.person),
+            label: 'Character',
+          ),
           NavigationDestination(
             icon: Icon(Icons.translate_outlined),
             selectedIcon: Icon(Icons.translate),
@@ -88,6 +94,11 @@ class _ShellState extends State<_Shell> {
             icon: Icon(Icons.people_outline),
             selectedIcon: Icon(Icons.people),
             label: 'Social',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.fitness_center_outlined),
+            selectedIcon: Icon(Icons.fitness_center),
+            label: 'Sport',
           ),
         ],
       ),
