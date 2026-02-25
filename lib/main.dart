@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'core/theme/app_theme.dart';
+import 'core/theme/rpg_colors.dart';
 import 'features/creation/presentation/pages/creation_page.dart';
 import 'features/japanese/presentation/pages/japanese_page.dart';
 import 'features/mindfulness/presentation/pages/mindfulness_page.dart';
@@ -55,51 +56,81 @@ class _ShellState extends State<_Shell> {
     SportPage(),
   ];
 
+  static const _tabs = <_TabDef>[
+    _TabDef(icon: Icons.person_outline, activeIcon: Icons.person, label: 'Player'),
+    _TabDef(icon: Icons.translate_outlined, activeIcon: Icons.translate, label: 'JP'),
+    _TabDef(icon: Icons.self_improvement_outlined, activeIcon: Icons.self_improvement, label: 'Mind'),
+    _TabDef(icon: Icons.account_balance_outlined, activeIcon: Icons.account_balance, label: 'Wealth'),
+    _TabDef(icon: Icons.brush_outlined, activeIcon: Icons.brush, label: 'Create'),
+    _TabDef(icon: Icons.people_outline, activeIcon: Icons.people, label: 'Social'),
+    _TabDef(icon: Icons.fitness_center_outlined, activeIcon: Icons.fitness_center, label: 'Sport'),
+  ];
+
   @override
   Widget build(BuildContext context) {
+    final bottomPad = MediaQuery.of(context).padding.bottom;
+
     return Scaffold(
       body: IndexedStack(index: _index, children: _pages),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _index,
-        onDestinationSelected: (i) => setState(() => _index = i),
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.person_outline),
-            selectedIcon: Icon(Icons.person),
-            label: 'Character',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.translate_outlined),
-            selectedIcon: Icon(Icons.translate),
-            label: 'Japanese',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.self_improvement_outlined),
-            selectedIcon: Icon(Icons.self_improvement),
-            label: 'Mindfulness',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.account_balance_outlined),
-            selectedIcon: Icon(Icons.account_balance),
-            label: 'Wealth',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.brush_outlined),
-            selectedIcon: Icon(Icons.brush),
-            label: 'Creation',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.people_outline),
-            selectedIcon: Icon(Icons.people),
-            label: 'Social',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.fitness_center_outlined),
-            selectedIcon: Icon(Icons.fitness_center),
-            label: 'Sport',
-          ),
-        ],
+      bottomNavigationBar: Container(
+        decoration: const BoxDecoration(
+          color: RpgColors.panelBg,
+          border: Border(top: BorderSide(color: RpgColors.border, width: 0.5)),
+        ),
+        padding: EdgeInsets.only(bottom: bottomPad),
+        child: Row(
+          children: List.generate(_tabs.length, (i) {
+            final tab = _tabs[i];
+            final selected = i == _index;
+            return Expanded(
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () => setState(() => _index = i),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        selected ? tab.activeIcon : tab.icon,
+                        size: 20,
+                        color: selected
+                            ? RpgColors.textPrimary
+                            : RpgColors.textMuted,
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        tab.label,
+                        style: TextStyle(
+                          color: selected
+                              ? RpgColors.textPrimary
+                              : RpgColors.textMuted,
+                          fontSize: 9,
+                          fontWeight:
+                              selected ? FontWeight.w600 : FontWeight.w400,
+                          letterSpacing: 0.3,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          }),
+        ),
       ),
     );
   }
+}
+
+class _TabDef {
+  final IconData icon;
+  final IconData activeIcon;
+  final String label;
+
+  const _TabDef({
+    required this.icon,
+    required this.activeIcon,
+    required this.label,
+  });
 }

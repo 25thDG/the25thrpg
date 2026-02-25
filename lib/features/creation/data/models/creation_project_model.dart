@@ -14,6 +14,7 @@ class CreationProjectModel {
           ? ProjectStatus.completed
           : ProjectStatus.active,
       totalMinutes: 0, // filled in by use case
+      difficulty: (map['difficulty'] as int?) ?? 1,
       deletedAt: map['deleted_at'] != null
           ? DateTime.parse(map['deleted_at'] as String).toLocal()
           : null,

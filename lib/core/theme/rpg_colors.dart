@@ -34,24 +34,27 @@ abstract final class RpgColors {
 
   // ── Accent ────────────────────────────────────────────────────────────────
 
-  /// Neutral warm accent — section header tints, "Lv." prefix.
-  static const accent = Color(0xFFA09A88);
+  /// Deep crimson accent — section header tints, "Lv." prefix, radar fill.
+  static const accent = Color(0xFFC0392B);
+
+  /// Muted warm accent — for subtle labels (mastery, secondary emphasis).
+  static const accentMuted = Color(0xFF8B3A30);
 
   // ── Progress bar ──────────────────────────────────────────────────────────
 
   /// Empty track behind progress bar.
   static const progressTrack = Color(0xFF1E1E2A);
 
-  /// Filled segment for an active skill.
-  static const progressFillActive = Color(0xFF86806E);
+  /// Filled segment for an active skill — dark red.
+  static const progressFillActive = Color(0xFFA93226);
 
   /// Filled segment for a dormant skill — desaturated.
   static const progressFillDormant = Color(0xFF3E3E48);
 
   // ── Status labels ─────────────────────────────────────────────────────────
 
-  /// "ACTIVE" label color — muted sage green.
-  static const statusActive = Color(0xFF9BB49A);
+  /// "ACTIVE" label color — soft red.
+  static const statusActive = Color(0xFFD4655A);
 
   /// "DORMANT" label color — dark grey.
   static const statusDormant = Color(0xFF4A4A54);

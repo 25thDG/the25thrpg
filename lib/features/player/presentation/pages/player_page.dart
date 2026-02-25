@@ -8,6 +8,7 @@ import '../controllers/player_controller.dart';
 import '../state/player_state.dart';
 import '../widgets/player_level_panel.dart';
 import '../widgets/rpg_colors.dart';
+import '../widgets/skill_radar_chart.dart';
 import '../widgets/skills_window.dart';
 
 class PlayerPage extends StatefulWidget {
@@ -157,6 +158,8 @@ class _PlayerPageState extends State<PlayerPage> {
             sliver: SliverList(
               delegate: SliverChildListDelegate([
                 PlayerLevelPanel(stats: stats),
+                const SizedBox(height: 12),
+                SkillRadarChart(skills: stats.skills),
                 const SizedBox(height: 12),
                 SkillsWindow(skills: stats.skills),
               ]),

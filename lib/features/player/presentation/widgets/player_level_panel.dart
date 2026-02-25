@@ -102,7 +102,10 @@ class _LevelColumn extends StatelessWidget {
           const SizedBox(height: 8),
           _AnimatedXpBar(progress: stats.playerProgressToNextLevel),
           const SizedBox(height: 6),
-          _XpBarFooter(progress: stats.playerProgressToNextLevel),
+          _XpBarFooter(
+            progress: stats.playerProgressToNextLevel,
+            playerLevel: stats.playerLevel,
+          ),
         ],
       ),
     );
@@ -155,14 +158,16 @@ class _AnimatedXpBar extends StatelessWidget {
 
 class _XpBarFooter extends StatelessWidget {
   final double progress;
+  final int playerLevel;
 
-  const _XpBarFooter({required this.progress});
+  const _XpBarFooter({required this.progress, required this.playerLevel});
 
   @override
   Widget build(BuildContext context) {
     final pct = (progress * 100).round();
+    final label = playerLevel >= 100 ? 'to next mastery' : 'to next level';
     return Text(
-      '$pct% to next level',
+      '$pct% $label',
       style: const TextStyle(
         color: RpgColors.textMuted,
         fontSize: 10,
@@ -181,8 +186,9 @@ class _StatsColumn extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final totalHours = stats.totalLifetimeHours;
-    final focusName = stats.currentFocus?.skill.displayName ?? '—';
+    final topSkillName = stats.topSkill?.skill.displayName ?? '—';
+    final totalMastery = stats.totalMastery;
+    final masteryValue = totalMastery > 0 ? '+$totalMastery pts' : '—';
 
     return Padding(
       padding: const EdgeInsets.all(20),
@@ -190,28 +196,17 @@ class _StatsColumn extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          _StatRow(
-            label: 'LIFETIME XP',
-            value: '${_fmtHours(totalHours)} hrs',
-          ),
+          _StatRow(label: 'TOP SKILL', value: topSkillName),
           const SizedBox(height: 18),
           _StatRow(
             label: 'ACTIVE SKILLS',
             value: '${stats.activeSkillCount} / ${stats.skills.length}',
           ),
           const SizedBox(height: 18),
-          _StatRow(label: 'CURRENT FOCUS', value: focusName),
+          _StatRow(label: 'MASTERY PTS', value: masteryValue),
         ],
       ),
     );
-  }
-
-  static String _fmtHours(double hours) {
-    final h = hours.round();
-    if (h >= 1000) {
-      return '${(h / 1000).toStringAsFixed(1)}k';
-    }
-    return h.toString();
   }
 }
 

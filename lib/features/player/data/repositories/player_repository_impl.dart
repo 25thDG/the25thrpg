@@ -10,41 +10,46 @@ class PlayerRepositoryImpl implements PlayerRepository {
 
   @override
   Future<PlayerStats> getPlayerStats() async {
-    final (skillData, japaneseData) = await (
-      _datasource.getSkillSessionData(),
+    final (japanese, mindfulness, sport, social, creation, wealth) = await (
       _datasource.getJapaneseData(),
+      _datasource.getMindfulnessData(),
+      _datasource.getSportData(),
+      _datasource.getSocialData(),
+      _datasource.getCreationData(),
+      _datasource.getWealthData(),
     ).wait;
 
     final skills = [
       SkillSummary(
         skill: SkillId.japanese,
-        lifetimeMinutes: japaneseData.lifetimeMinutes,
-        last30DaysMinutes: japaneseData.last30DaysMinutes,
+        lifetimeMinutes: japanese.lifetimeMinutes,
+        last30DaysMinutes: japanese.last30DaysMinutes,
+      ),
+      SkillSummary(
+        skill: SkillId.wealth,
+        currentNetWorthEur: wealth.currentNetWorthEur,
       ),
       SkillSummary(
         skill: SkillId.mindfulness,
-        lifetimeMinutes:
-            skillData[SkillId.mindfulness]?.lifetimeMinutes ?? 0,
-        last30DaysMinutes:
-            skillData[SkillId.mindfulness]?.last30DaysMinutes ?? 0,
+        lifetimeMinutes: mindfulness.lifetimeMinutes,
+        last30DaysMinutes: mindfulness.last30DaysMinutes,
       ),
       SkillSummary(
         skill: SkillId.creation,
-        lifetimeMinutes:
-            skillData[SkillId.creation]?.lifetimeMinutes ?? 0,
-        last30DaysMinutes:
-            skillData[SkillId.creation]?.last30DaysMinutes ?? 0,
+        lifetimeMinutes: creation.lifetimeMinutes,
+        last30DaysMinutes: creation.last30DaysMinutes,
+        weightedPoints: creation.weightedPoints,
       ),
       SkillSummary(
         skill: SkillId.social,
-        lifetimeMinutes: skillData[SkillId.social]?.lifetimeMinutes ?? 0,
-        last30DaysMinutes:
-            skillData[SkillId.social]?.last30DaysMinutes ?? 0,
+        lifetimeMinutes: social.lifetimeMinutes,
+        last30DaysMinutes: social.last30DaysMinutes,
       ),
       SkillSummary(
         skill: SkillId.sport,
-        lifetimeMinutes: skillData[SkillId.sport]?.lifetimeMinutes ?? 0,
-        last30DaysMinutes: skillData[SkillId.sport]?.last30DaysMinutes ?? 0,
+        lifetimeMinutes: sport.lifetimeMinutes,
+        last30DaysMinutes: sport.last30DaysMinutes,
+        trainedDaysLast30: sport.trainedDaysLast30,
       ),
     ];
 

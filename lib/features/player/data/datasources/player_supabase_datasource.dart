@@ -1,80 +1,65 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../../domain/entities/skill_summary.dart';
-
 const _userId = '1a67d50e-4263-4923-b4bc-1bfa57426aae';
 
-/// Maps each SkillId to its UUID in the `skill_sessions` table.
-const _skillSessionIds = {
-  SkillId.social: 'a3870777-b8a7-433f-aa32-363799edfbd5',
-  SkillId.sport: 'e377b7af-d755-4a16-aa7a-d4fdee33b493',
-  SkillId.mindfulness: '6e3b1f81-5733-4ada-a65a-d06d923f94ee',
-  SkillId.creation: '1c955a16-ec08-40c4-9855-f3d82b86ea9a',
-};
+// Skill UUIDs in the `skill_sessions` table.
+const _mindfulnessSkillId = '6e3b1f81-5733-4ada-a65a-d06d923f94ee';
+const _sportSkillId = 'e377b7af-d755-4a16-aa7a-d4fdee33b493';
+const _socialSkillId = 'a3870777-b8a7-433f-aa32-363799edfbd5';
+const _creationSkillId = '1c955a16-ec08-40c4-9855-f3d82b86ea9a';
 
-class PlayerSkillRaw {
+// ── Raw result types ──────────────────────────────────────────────────────────
+
+class PlayerTimeRaw {
   final int lifetimeMinutes;
   final int last30DaysMinutes;
 
-  const PlayerSkillRaw({
+  const PlayerTimeRaw({
     required this.lifetimeMinutes,
     required this.last30DaysMinutes,
   });
 }
+
+class PlayerSportRaw {
+  final int lifetimeMinutes;
+  final int last30DaysMinutes;
+  final int trainedDaysLast30;
+
+  const PlayerSportRaw({
+    required this.lifetimeMinutes,
+    required this.last30DaysMinutes,
+    required this.trainedDaysLast30,
+  });
+}
+
+class PlayerCreationRaw {
+  final int lifetimeMinutes;
+  final int last30DaysMinutes;
+  final double weightedPoints;
+
+  const PlayerCreationRaw({
+    required this.lifetimeMinutes,
+    required this.last30DaysMinutes,
+    required this.weightedPoints,
+  });
+}
+
+class PlayerWealthRaw {
+  final double currentNetWorthEur;
+
+  const PlayerWealthRaw({required this.currentNetWorthEur});
+}
+
+// ── Datasource ────────────────────────────────────────────────────────────────
 
 class PlayerSupabaseDatasource {
   final SupabaseClient _client;
 
   const PlayerSupabaseDatasource(this._client);
 
-  /// Fetches minute totals for Social, Sport, Mindfulness, and Creation
-  /// from `skill_sessions` in a single network call.
-  Future<Map<SkillId, PlayerSkillRaw>> getSkillSessionData() async {
-    final cutoff = DateTime.now().subtract(const Duration(days: 30));
+  // ── Japanese ───────────────────────────────────────────────────────────────
 
-    final res = await _client
-        .from('skill_sessions')
-        .select('skill_id, minutes, session_at')
-        .eq('user_id', _userId)
-        .inFilter('skill_id', _skillSessionIds.values.toList())
-        .isFilter('deleted_at', null);
-
-    final rows = (res as List).cast<Map<String, dynamic>>();
-
-    // Reverse lookup: skill_id string → SkillId enum
-    final idToSkill = {
-      for (final e in _skillSessionIds.entries) e.value: e.key,
-    };
-
-    final lifetime = {for (final s in _skillSessionIds.keys) s: 0};
-    final last30 = {for (final s in _skillSessionIds.keys) s: 0};
-
-    for (final row in rows) {
-      final skillIdStr = row['skill_id'] as String;
-      final skillId = idToSkill[skillIdStr];
-      if (skillId == null) continue;
-
-      final minutes = row['minutes'] as int? ?? 0;
-      lifetime[skillId] = (lifetime[skillId] ?? 0) + minutes;
-
-      final sessionAt =
-          DateTime.parse(row['session_at'] as String).toLocal();
-      if (sessionAt.isAfter(cutoff)) {
-        last30[skillId] = (last30[skillId] ?? 0) + minutes;
-      }
-    }
-
-    return {
-      for (final s in _skillSessionIds.keys)
-        s: PlayerSkillRaw(
-          lifetimeMinutes: lifetime[s] ?? 0,
-          last30DaysMinutes: last30[s] ?? 0,
-        ),
-    };
-  }
-
-  /// Fetches minute totals for Japanese from its dedicated table.
-  Future<PlayerSkillRaw> getJapaneseData() async {
+  Future<PlayerTimeRaw> getJapaneseData() async {
     final cutoff = DateTime.now().subtract(const Duration(days: 30));
 
     final res = await _client
@@ -83,25 +68,187 @@ class PlayerSupabaseDatasource {
         .eq('user_id', _userId)
         .isFilter('deleted_at', null);
 
-    final rows = (res as List).cast<Map<String, dynamic>>();
+    int lifetime = 0;
+    int last30 = 0;
+    for (final row in (res as List).cast<Map<String, dynamic>>()) {
+      final m = row['minutes'] as int? ?? 0;
+      lifetime += m;
+      final at = DateTime.parse(row['session_at'] as String).toLocal();
+      if (at.isAfter(cutoff)) last30 += m;
+    }
 
-    int lifetimeMinutes = 0;
-    int last30DaysMinutes = 0;
+    return PlayerTimeRaw(lifetimeMinutes: lifetime, last30DaysMinutes: last30);
+  }
 
-    for (final row in rows) {
-      final minutes = row['minutes'] as int? ?? 0;
-      lifetimeMinutes += minutes;
+  // ── Mindfulness ────────────────────────────────────────────────────────────
 
-      final sessionAt =
-          DateTime.parse(row['session_at'] as String).toLocal();
-      if (sessionAt.isAfter(cutoff)) {
-        last30DaysMinutes += minutes;
+  Future<PlayerTimeRaw> getMindfulnessData() async {
+    final cutoff = DateTime.now().subtract(const Duration(days: 30));
+
+    final res = await _client
+        .from('skill_sessions')
+        .select('minutes, session_at')
+        .eq('user_id', _userId)
+        .eq('skill_id', _mindfulnessSkillId)
+        .isFilter('deleted_at', null);
+
+    int lifetime = 0;
+    int last30 = 0;
+    for (final row in (res as List).cast<Map<String, dynamic>>()) {
+      final m = row['minutes'] as int? ?? 0;
+      lifetime += m;
+      final at = DateTime.parse(row['session_at'] as String).toLocal();
+      if (at.isAfter(cutoff)) last30 += m;
+    }
+
+    return PlayerTimeRaw(lifetimeMinutes: lifetime, last30DaysMinutes: last30);
+  }
+
+  // ── Sport ──────────────────────────────────────────────────────────────────
+
+  Future<PlayerSportRaw> getSportData() async {
+    final cutoff = DateTime.now().subtract(const Duration(days: 30));
+
+    final res = await _client
+        .from('skill_sessions')
+        .select('minutes, session_at')
+        .eq('user_id', _userId)
+        .eq('skill_id', _sportSkillId)
+        .isFilter('deleted_at', null);
+
+    int lifetime = 0;
+    int last30 = 0;
+    final trainingDays = <String>{};
+
+    for (final row in (res as List).cast<Map<String, dynamic>>()) {
+      final m = row['minutes'] as int? ?? 0;
+      lifetime += m;
+      final at = DateTime.parse(row['session_at'] as String).toLocal();
+      if (at.isAfter(cutoff)) {
+        last30 += m;
+        trainingDays.add('${at.year}-${at.month}-${at.day}');
       }
     }
 
-    return PlayerSkillRaw(
-      lifetimeMinutes: lifetimeMinutes,
-      last30DaysMinutes: last30DaysMinutes,
+    return PlayerSportRaw(
+      lifetimeMinutes: lifetime,
+      last30DaysMinutes: last30,
+      trainedDaysLast30: trainingDays.length,
     );
+  }
+
+  // ── Social ─────────────────────────────────────────────────────────────────
+  //   Hours-based like other skills.
+
+  Future<PlayerTimeRaw> getSocialData() async {
+    final cutoff = DateTime.now().subtract(const Duration(days: 30));
+
+    final res = await _client
+        .from('skill_sessions')
+        .select('minutes, session_at')
+        .eq('user_id', _userId)
+        .eq('skill_id', _socialSkillId)
+        .isFilter('deleted_at', null);
+
+    int lifetime = 0;
+    int last30 = 0;
+    for (final row in (res as List).cast<Map<String, dynamic>>()) {
+      final m = row['minutes'] as int? ?? 0;
+      lifetime += m;
+      final at = DateTime.parse(row['session_at'] as String).toLocal();
+      if (at.isAfter(cutoff)) last30 += m;
+    }
+
+    return PlayerTimeRaw(lifetimeMinutes: lifetime, last30DaysMinutes: last30);
+  }
+
+  // ── Creation ───────────────────────────────────────────────────────────────
+  //   Hours from all creation sessions + project difficulty bonus.
+
+  Future<PlayerCreationRaw> getCreationData() async {
+    final cutoff = DateTime.now().subtract(const Duration(days: 30));
+
+    // 1. General creation sessions (from skill_sessions)
+    final generalRes = await _client
+        .from('skill_sessions')
+        .select('minutes, session_at')
+        .eq('user_id', _userId)
+        .eq('skill_id', _creationSkillId)
+        .isFilter('deleted_at', null);
+
+    int lifetime = 0;
+    int last30 = 0;
+    for (final row in (generalRes as List).cast<Map<String, dynamic>>()) {
+      final m = row['minutes'] as int? ?? 0;
+      lifetime += m;
+      final at = DateTime.parse(row['session_at'] as String).toLocal();
+      if (at.isAfter(cutoff)) last30 += m;
+    }
+
+    // 2. Project-specific creation sessions (from creation_sessions)
+    final projectIds = await _client
+        .from('creation_projects')
+        .select('id')
+        .eq('user_id', _userId)
+        .isFilter('deleted_at', null);
+
+    final ids = (projectIds as List)
+        .cast<Map<String, dynamic>>()
+        .map((r) => r['id'] as String)
+        .toList();
+
+    if (ids.isNotEmpty) {
+      final projectSessionsRes = await _client
+          .from('creation_sessions')
+          .select('minutes, session_at')
+          .inFilter('project_id', ids)
+          .isFilter('deleted_at', null);
+
+      for (final row
+          in (projectSessionsRes as List).cast<Map<String, dynamic>>()) {
+        final m = row['minutes'] as int? ?? 0;
+        lifetime += m;
+        final at = DateTime.parse(row['session_at'] as String).toLocal();
+        if (at.isAfter(cutoff)) last30 += m;
+      }
+    }
+
+    // 3. Project difficulty sum
+    final projectsRes = await _client
+        .from('creation_projects')
+        .select('difficulty')
+        .eq('user_id', _userId)
+        .isFilter('deleted_at', null);
+
+    double points = 0;
+    for (final row in (projectsRes as List).cast<Map<String, dynamic>>()) {
+      points += (row['difficulty'] as int? ?? 1).toDouble();
+    }
+
+    return PlayerCreationRaw(
+      lifetimeMinutes: lifetime,
+      last30DaysMinutes: last30,
+      weightedPoints: points,
+    );
+  }
+
+  // ── Wealth ─────────────────────────────────────────────────────────────────
+
+  Future<PlayerWealthRaw> getWealthData() async {
+    final res = await _client
+        .from('wealth_snapshots')
+        .select('net_worth_eur')
+        .eq('user_id', _userId)
+        .isFilter('deleted_at', null)
+        .order('snapshot_month', ascending: false)
+        .limit(1);
+
+    final rows = (res as List).cast<Map<String, dynamic>>();
+    if (rows.isEmpty) return const PlayerWealthRaw(currentNetWorthEur: 0);
+
+    final raw = rows.first['net_worth_eur'];
+    final netWorth = raw is num ? raw.toDouble() : 0.0;
+
+    return PlayerWealthRaw(currentNetWorthEur: netWorth);
   }
 }

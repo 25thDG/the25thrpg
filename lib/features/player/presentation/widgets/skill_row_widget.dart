@@ -6,7 +6,7 @@ import 'rpg_colors.dart';
 /// A single row in the Skills window.
 ///
 /// Layout:
-///   [Skill name + descriptor] | [Level number] | [Progress bar + status]
+///   [Skill name + descriptor] | [Level / Mastery] | [Progress bar + status]
 ///
 /// Animates in via [animation] — caller supplies a staggered
 /// [Animation<double>] (opacity + vertical offset).
@@ -39,10 +39,10 @@ class SkillRowWidget extends StatelessWidget {
                 flex: 5,
                 child: _NameColumn(skill: skill),
               ),
-              // CENTER — level number
+              // CENTER — level / mastery
               SizedBox(
-                width: 64,
-                child: _LevelDisplay(level: skill.level, isActive: skill.isActive),
+                width: 72,
+                child: _LevelDisplay(skill: skill),
               ),
               // RIGHT — bar + status
               Expanded(
@@ -98,25 +98,36 @@ class _NameColumn extends StatelessWidget {
   }
 }
 
-// ── Level number ─────────────────────────────────────────────────────────────
+// ── Level number / mastery badge ──────────────────────────────────────────────
 
 class _LevelDisplay extends StatelessWidget {
-  final int level;
-  final bool isActive;
+  final SkillSummary skill;
 
-  const _LevelDisplay({required this.level, required this.isActive});
+  const _LevelDisplay({required this.skill});
 
   @override
   Widget build(BuildContext context) {
-    final numColor = isActive ? RpgColors.textPrimary : RpgColors.textSecondary.withValues(alpha: 0.5);
+    final isActive = skill.isActive;
+    final hasMastery = skill.mastery > 0;
+    final numColor = isActive
+        ? RpgColors.textPrimary
+        : RpgColors.textSecondary.withValues(alpha: 0.5);
+    final accentAlpha = isActive ? 0.9 : 0.4;
+
+    final displayValue =
+        hasMastery ? skill.mastery.toDouble() : skill.level.toDouble();
+    final label = hasMastery ? 'MASTERY' : 'Lv.';
+    final labelColor = hasMastery
+        ? RpgColors.accent
+        : RpgColors.accent.withValues(alpha: accentAlpha);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Text(
-          'Lv.',
+          label,
           style: TextStyle(
-            color: RpgColors.accent.withValues(alpha: isActive ? 0.9 : 0.4),
+            color: labelColor,
             fontSize: 9,
             fontWeight: FontWeight.w500,
             letterSpacing: 1.2,
@@ -124,14 +135,14 @@ class _LevelDisplay extends StatelessWidget {
         ),
         const SizedBox(height: 1),
         TweenAnimationBuilder<double>(
-          tween: Tween(begin: 0, end: level.toDouble()),
+          tween: Tween(begin: 0, end: displayValue),
           duration: const Duration(milliseconds: 800),
           curve: Curves.easeOutCubic,
           builder: (_, value, _) => Text(
-            value.round().toString(),
+            hasMastery ? '+${value.round()}' : value.round().toString(),
             style: TextStyle(
-              color: numColor,
-              fontSize: 28,
+              color: hasMastery ? RpgColors.accent : numColor,
+              fontSize: hasMastery ? 22 : 28,
               fontWeight: FontWeight.w700,
               height: 1.0,
               letterSpacing: -0.5,
@@ -160,6 +171,9 @@ class _ProgressColumn extends StatelessWidget {
         isActive ? RpgColors.statusActive : RpgColors.statusDormant;
     final statusLabel = isActive ? 'ACTIVE' : 'DORMANT';
 
+    final remaining = skill.remainingToNextLevel;
+    final hasMastery = skill.mastery > 0;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
@@ -180,6 +194,15 @@ class _ProgressColumn extends StatelessWidget {
           builder: (_, value, _) => _ThinBar(
             progress: value,
             fillColor: fillColor,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          hasMastery ? '$remaining to +${skill.mastery + 1}' : '$remaining to Lv.${skill.level + 1}',
+          style: TextStyle(
+            color: RpgColors.textMuted.withValues(alpha: 0.7),
+            fontSize: 9,
+            letterSpacing: 0.3,
           ),
         ),
       ],
