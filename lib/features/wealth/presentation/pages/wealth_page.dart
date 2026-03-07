@@ -11,6 +11,7 @@ import '../state/wealth_state.dart';
 import '../widgets/wealth_current_section.dart';
 import '../widgets/wealth_highest_section.dart';
 import '../widgets/wealth_history_chart.dart';
+import '../widgets/wealth_million_section.dart';
 import '../widgets/wealth_monthly_input_section.dart';
 import '../widgets/wealth_radar_section.dart';
 
@@ -126,7 +127,9 @@ class _WealthPageState extends State<WealthPage> {
                   WealthRadarSection(stats: state.stats!),
                   // 3. History chart
                   WealthHistoryChart(history: state.stats!.monthlyHistory),
-                  // 4. All-time high
+                  // 4. €1M projection
+                  WealthMillionSection(stats: state.stats!),
+                  // 5. All-time high
                   WealthHighestSection(stats: state.stats!),
                 ],
                 // 5. Monthly input
