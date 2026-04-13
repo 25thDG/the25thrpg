@@ -6,9 +6,6 @@ enum SkillId {
   japanese,
   wealth,
   mindfulness,
-  creation,
-  social,
-  sport,
 }
 
 extension SkillIdX on SkillId {
@@ -20,12 +17,6 @@ extension SkillIdX on SkillId {
         return 'WEALTH';
       case SkillId.mindfulness:
         return 'MINDFULNESS';
-      case SkillId.creation:
-        return 'CREATION';
-      case SkillId.social:
-        return 'SOCIAL';
-      case SkillId.sport:
-        return 'SPORT';
     }
   }
 
@@ -37,12 +28,6 @@ extension SkillIdX on SkillId {
         return 'Financial Power';
       case SkillId.mindfulness:
         return 'Inner Discipline';
-      case SkillId.creation:
-        return 'Artistic Expression';
-      case SkillId.social:
-        return 'Human Connection';
-      case SkillId.sport:
-        return 'Physical Mastery';
     }
   }
 
@@ -52,13 +37,7 @@ extension SkillIdX on SkillId {
         return 1.2;
       case SkillId.wealth:
         return 1.2;
-      case SkillId.creation:
-        return 1.1;
-      case SkillId.sport:
-        return 1.0;
       case SkillId.mindfulness:
-        return 1.0;
-      case SkillId.social:
         return 1.0;
     }
   }
@@ -68,31 +47,31 @@ extension SkillIdX on SkillId {
 ///
 /// All time-based skills use [lifetimeMinutes] as primary input.
 /// Wealth uses [currentNetWorthEur].
-/// Creation additionally uses [weightedPoints] (project difficulty bonus).
-/// Sport additionally uses [trainedDaysLast30] (consistency bonus).
 class SkillSummary {
   final SkillId skill;
 
-  // ── Time-based (all skills except wealth) ─────────────────────────────────
+  // ── Time-based (japanese, mindfulness) ────────────────────────────────────
   final int lifetimeMinutes;
   final int last30DaysMinutes;
 
-  // ── Sport: distinct training days in last 30 ───────────────────────────────
-  final int trainedDaysLast30;
-
-  // ── Creation: project difficulty bonus ─────────────────────────────────────
-  final double weightedPoints;
+  /// Minutes logged since the daily-average tracking start date (2026-04-11).
+  /// For mindfulness, addiction sessions are excluded.
+  final int minutesSinceTracking;
 
   // ── Wealth: current net worth (€) ─────────────────────────────────────────
   final double currentNetWorthEur;
+
+  /// Average monthly net-worth growth derived from all wealth snapshots.
+  /// Null when fewer than 2 snapshots exist.
+  final double? monthlyGrowthEur;
 
   const SkillSummary({
     required this.skill,
     this.lifetimeMinutes = 0,
     this.last30DaysMinutes = 0,
-    this.trainedDaysLast30 = 0,
-    this.weightedPoints = 0.0,
+    this.minutesSinceTracking = 0,
     this.currentNetWorthEur = 0.0,
+    this.monthlyGrowthEur,
   });
 
   double get _hours => lifetimeMinutes / 60.0;
@@ -112,7 +91,6 @@ class SkillSummary {
     switch (skill) {
       case SkillId.japanese:
         // Sqrt. 2,200 hours → 100
-        // Lv2 = ~1h, Lv10 = 22h, Lv50 = 550h, Lv100 = 2200h
         return sqrt(_hours) / sqrt(2200) * 100;
 
       case SkillId.wealth:
@@ -123,25 +101,6 @@ class SkillSummary {
       case SkillId.mindfulness:
         // Sqrt. 10,000 min (~167h) → 100
         return sqrt(lifetimeMinutes.toDouble()) / sqrt(10_000) * 100;
-
-      case SkillId.sport:
-        // Sqrt volume + consistency bonus (up to +10)
-        // 2,000 hours base → 100
-        final volumeLevel = sqrt(_hours) / sqrt(2000) * 100;
-        final consistencyBonus = 10.0 * (trainedDaysLast30 / 30.0);
-        return volumeLevel + consistencyBonus;
-
-      case SkillId.social:
-        // Sqrt. 750 hours → 100
-        return sqrt(_hours) / sqrt(750) * 100;
-
-      case SkillId.creation:
-        // Sqrt hours + project bonus
-        // 1,000 hours base → ~90, projects fill the rest
-        // Each project difficulty point → +2 levels
-        final hoursLevel = sqrt(_hours) / sqrt(1000) * 100;
-        final projectBonus = weightedPoints * 2;
-        return hoursLevel + projectBonus;
     }
   }
 
@@ -155,7 +114,6 @@ class SkillSummary {
     if (_rawLevel < 100) return 0;
     switch (skill) {
       case SkillId.japanese:
-        // Every 200 hours beyond 2,200h = +1 mastery
         if (_hours <= 2200) return 0;
         return ((_hours - 2200) / 200).floor();
 
@@ -166,18 +124,6 @@ class SkillSummary {
       case SkillId.mindfulness:
         if (lifetimeMinutes <= 10_000) return 0;
         return ((lifetimeMinutes - 10_000) / 1_000).floor();
-
-      case SkillId.sport:
-        if (_hours <= 2000) return 0;
-        return ((_hours - 2000) / 150).floor();
-
-      case SkillId.social:
-        if (_hours <= 750) return 0;
-        return ((_hours - 750) / 100).floor();
-
-      case SkillId.creation:
-        if (_hours <= 1000) return 0;
-        return ((_hours - 1000) / 100).floor();
     }
   }
 
@@ -201,42 +147,17 @@ class SkillSummary {
   String _remainingForTarget(int targetLevel) {
     switch (skill) {
       case SkillId.japanese:
-        // level = sqrt(h)/sqrt(2200)*100 → h = (level/100)^2 * 2200
         final needed = pow(targetLevel / 100.0, 2) * 2200;
         return _fmtTime(needed - _hours);
 
       case SkillId.wealth:
-        // level = sqrt(w/1M)*100 → w = (level/100)^2 * 1M
         final needed = pow(targetLevel / 100.0, 2) * 1_000_000;
         final remaining = (needed - currentNetWorthEur).ceil();
         return _fmtEur(remaining);
 
       case SkillId.mindfulness:
-        // level = sqrt(m)/100*100 → m = (level/100)^2 * 10000
         final neededMin = pow(targetLevel / 100.0, 2) * 10_000;
         return _fmtTime((neededMin - lifetimeMinutes) / 60.0);
-
-      case SkillId.sport:
-        final bonus = 10.0 * (trainedDaysLast30 / 30.0);
-        final neededVolume = targetLevel - bonus;
-        final volumeRaw = sqrt(_hours) / sqrt(2000) * 100;
-        if (neededVolume <= volumeRaw) return '0h';
-        final neededHours = pow(neededVolume / 100.0, 2) * 2000;
-        return _fmtTime(neededHours - _hours);
-
-      case SkillId.social:
-        // level = sqrt(h)/sqrt(750)*100 → h = (level/100)^2 * 750
-        final needed = pow(targetLevel / 100.0, 2) * 750;
-        return _fmtTime(needed - _hours);
-
-      case SkillId.creation:
-        // level = sqrt(h)/sqrt(1000)*100 + points*2
-        final bonus = weightedPoints * 2;
-        final neededHoursLevel = targetLevel - bonus;
-        final hoursRaw = sqrt(_hours) / sqrt(1000) * 100;
-        if (neededHoursLevel <= hoursRaw) return '0h';
-        final neededHours = pow(neededHoursLevel / 100.0, 2) * 1000;
-        return _fmtTime(neededHours - _hours);
     }
   }
 
@@ -251,15 +172,6 @@ class SkillSummary {
       case SkillId.mindfulness:
         final excessMin = lifetimeMinutes - 10_000;
         return _fmtTime((1_000 - (excessMin % 1_000)) / 60.0);
-      case SkillId.sport:
-        final excess = _hours - 2000;
-        return _fmtTime(150 - (excess % 150));
-      case SkillId.social:
-        final excess = _hours - 750;
-        return _fmtTime(100 - (excess % 100));
-      case SkillId.creation:
-        final excess = _hours - 1000;
-        return _fmtTime(100 - (excess % 100));
     }
   }
 
@@ -301,15 +213,33 @@ class SkillSummary {
       case SkillId.mindfulness:
         if (lifetimeMinutes <= 10_000) return 0.0;
         return ((lifetimeMinutes - 10_000) % 1_000) / 1_000.0;
-      case SkillId.sport:
-        if (_hours <= 2000) return 0.0;
-        return ((_hours - 2000) % 150) / 150.0;
-      case SkillId.social:
-        if (_hours <= 750) return 0.0;
-        return ((_hours - 750) % 100) / 100.0;
-      case SkillId.creation:
-        if (_hours <= 1000) return 0.0;
-        return ((_hours - 1000) % 100) / 100.0;
     }
+  }
+
+  // ── Daily average (time-based skills only) ─────────────────────────────────
+
+  static final _trackingStart = DateTime(2026, 4, 11);
+
+  /// Average minutes per day since tracking start. Returns 0 for wealth.
+  double get dailyAverageMinutes {
+    if (skill == SkillId.wealth) return 0;
+    final days = DateTime.now().difference(_trackingStart).inDays + 1;
+    return minutesSinceTracking / days.clamp(1, 9999);
+  }
+
+  // ── Wealth projection ──────────────────────────────────────────────────────
+
+  /// Human-readable time until €1M, e.g. "2.3y" or "8mo".
+  /// Null if already at/above €1M, no growth data, or negative growth.
+  String? get projectedTimeToMillion {
+    if (skill != SkillId.wealth) return null;
+    if (currentNetWorthEur >= 1_000_000) return null;
+    final growth = monthlyGrowthEur;
+    if (growth == null || growth <= 0) return null;
+    final monthsLeft = ((1_000_000 - currentNetWorthEur) / growth).ceil();
+    if (monthsLeft <= 0) return null;
+    if (monthsLeft < 12) return '${monthsLeft}mo';
+    final years = monthsLeft / 12.0;
+    return '${years.toStringAsFixed(1)}y';
   }
 }

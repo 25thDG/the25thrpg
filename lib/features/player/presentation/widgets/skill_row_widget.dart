@@ -20,8 +20,21 @@ class SkillRowWidget extends StatelessWidget {
     required this.animation,
   });
 
+  static Color _skillColor(SkillId id) {
+    switch (id) {
+      case SkillId.japanese:
+        return const Color(0xFF4FC3F7);
+      case SkillId.wealth:
+        return const Color(0xFFFFD54F);
+      case SkillId.mindfulness:
+        return const Color(0xFF26A69A);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final accentColor = _skillColor(skill.skill);
+
     return FadeTransition(
       opacity: animation,
       child: SlideTransition(
@@ -29,25 +42,43 @@ class SkillRowWidget extends StatelessWidget {
           begin: const Offset(0, 0.18),
           end: Offset.zero,
         ).animate(animation),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        child: IntrinsicHeight(
           child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // LEFT — name + descriptor
-              Expanded(
-                flex: 5,
-                child: _NameColumn(skill: skill),
+              // Colored left accent bar
+              Container(
+                width: 3,
+                color: skill.isActive
+                    ? accentColor
+                    : accentColor.withValues(alpha: 0.25),
               ),
-              // CENTER — level / mastery
-              SizedBox(
-                width: 72,
-                child: _LevelDisplay(skill: skill),
-              ),
-              // RIGHT — bar + status
+              // Row content
               Expanded(
-                flex: 5,
-                child: _ProgressColumn(skill: skill),
+                child: Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      // LEFT — name + descriptor
+                      Expanded(
+                        flex: 5,
+                        child: _NameColumn(skill: skill),
+                      ),
+                      // CENTER — level / mastery
+                      SizedBox(
+                        width: 72,
+                        child: _LevelDisplay(skill: skill),
+                      ),
+                      // RIGHT — bar + status
+                      Expanded(
+                        flex: 5,
+                        child: _ProgressColumn(skill: skill),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ],
           ),

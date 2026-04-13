@@ -21,7 +21,9 @@ class MindfulnessCategorySection extends StatelessWidget {
     return SectionCard(
       title: 'Category Breakdown',
       child: Column(
-        children: MindfulnessCategory.values.map((category) {
+        children: MindfulnessCategory.values
+            .where((c) => !c.isAddiction)
+            .map((category) {
           final data = stats.categoryBreakdown[category];
           if (data == null) return const SizedBox.shrink();
           return _CategoryRow(stats: data);

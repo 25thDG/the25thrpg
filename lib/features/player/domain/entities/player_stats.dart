@@ -12,7 +12,10 @@ import 'skill_summary.dart';
 class PlayerStats {
   final List<SkillSummary> skills;
 
-  const PlayerStats({required this.skills});
+  /// Consecutive days with at least one session across all skills.
+  final int streakDays;
+
+  const PlayerStats({required this.skills, this.streakDays = 0});
 
   double get _playerLevelRaw {
     if (skills.isEmpty) return 1.0;

@@ -63,7 +63,7 @@ class MindfulnessSupabaseDatasource {
           .insert({
             'user_id': _userId,
             'skill_id': _skillId,
-            'category': category.name,
+            'category': category.dbValue,
             'minutes': minutes,
             'session_at': sessionAt.toUtc().toIso8601String(),
           })

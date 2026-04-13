@@ -10,6 +10,7 @@ import '../../data/datasources/mindfulness_supabase_datasource.dart';
 import '../../data/repositories/mindfulness_repository_impl.dart';
 import '../controllers/mindfulness_controller.dart';
 import '../state/mindfulness_state.dart';
+import '../widgets/mindfulness_addiction_section.dart';
 import '../widgets/mindfulness_category_section.dart';
 import '../widgets/mindfulness_lifetime_section.dart';
 import '../widgets/mindfulness_rolling_section.dart';
@@ -133,8 +134,13 @@ class _MindfulnessPageState extends State<MindfulnessPage> {
                   MindfulnessCategorySection(stats: state.stats!),
                   // 3. Last 30 days + best 30-day period
                   MindfulnessRollingSection(stats: state.stats!),
+                  // 4. Addiction streak
+                  MindfulnessAddictionSection(
+                    stats: state.stats!,
+                    onLog: _controller.logAddictionDay,
+                  ),
                 ],
-                // 4. Today logging
+                // 5. Today logging
                 MindfulnessTodaySection(
                   sessions: state.todaySessions,
                   onAdd: _controller.addSession,

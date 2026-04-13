@@ -204,6 +204,11 @@ class _StatsColumn extends StatelessWidget {
           ),
           const SizedBox(height: 18),
           _StatRow(label: 'MASTERY PTS', value: masteryValue),
+          const SizedBox(height: 18),
+          _StatRow(
+            label: 'STREAK',
+            value: stats.streakDays > 0 ? '${stats.streakDays} days' : '—',
+          ),
         ],
       ),
     );

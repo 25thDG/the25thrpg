@@ -39,8 +39,10 @@ class _MindfulnessAddSessionSheetState
   @override
   void initState() {
     super.initState();
-    _category =
-        widget.existing?.category ?? MindfulnessCategory.meditation;
+    final existing = widget.existing;
+    _category = (existing != null && !existing.category.isAddiction)
+        ? existing.category
+        : MindfulnessCategory.meditation;
     _minutesController = TextEditingController(
       text: widget.existing != null ? '${widget.existing!.minutes}' : '',
     );
@@ -95,7 +97,7 @@ class _MindfulnessAddSessionSheetState
             Wrap(
               spacing: 8,
               runSpacing: 8,
-              children: MindfulnessCategory.values.map((c) {
+              children: MindfulnessCategory.values.where((c) => !c.isAddiction).map((c) {
                 final selected = c == _category;
                 return ChoiceChip(
                   label: Text(c.displayName),

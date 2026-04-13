@@ -111,4 +111,21 @@ class MindfulnessController extends ChangeNotifier {
       return e.toString();
     }
   }
+
+  /// Logs today's addiction status.
+  /// [isClean] = true → clean day (10 min equivalent); false → relapsed.
+  Future<String?> logAddictionDay({required bool isClean}) async {
+    try {
+      await _addSession.execute(
+        category: isClean
+            ? MindfulnessCategory.addiction
+            : MindfulnessCategory.addictionRelapse,
+        minutes: isClean ? 10 : 0,
+      );
+      await load();
+      return null;
+    } catch (e) {
+      return e.toString();
+    }
+  }
 }

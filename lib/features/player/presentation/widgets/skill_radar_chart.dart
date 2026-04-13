@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import '../../domain/entities/skill_summary.dart';
 import 'rpg_colors.dart';
 
-/// Hexagonal radar chart displaying all 6 skill levels (capped at 100).
+/// Triangular radar chart displaying the 3 core skill levels (capped at 100).
 class SkillRadarChart extends StatelessWidget {
   final List<SkillSummary> skills;
 
@@ -112,13 +112,10 @@ class _RadarPainter extends CustomPainter {
 
   _RadarPainter({required this.skills, required this.animationValue});
 
-  // Order for the hexagon: top, then clockwise
+  // Order for the triangle: top, then clockwise
   static const _displayOrder = [
     SkillId.japanese,
     SkillId.wealth,
-    SkillId.sport,
-    SkillId.social,
-    SkillId.creation,
     SkillId.mindfulness,
   ];
 
@@ -215,7 +212,7 @@ class _RadarPainter extends CustomPainter {
       final skillId = _displayOrder[i];
       final skill = skillMap[skillId];
       final lvl = skill?.level ?? 1;
-      final labelR = radius + 22;
+      final labelR = radius + 30;
       final p = Offset(
         center.dx + labelR * cos(angle),
         center.dy + labelR * sin(angle),

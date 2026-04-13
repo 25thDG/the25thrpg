@@ -3,12 +3,9 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'core/theme/app_theme.dart';
 import 'core/theme/rpg_colors.dart';
-import 'features/creation/presentation/pages/creation_page.dart';
 import 'features/japanese/presentation/pages/japanese_page.dart';
 import 'features/mindfulness/presentation/pages/mindfulness_page.dart';
 import 'features/player/presentation/pages/player_page.dart';
-import 'features/social/presentation/pages/social_page.dart';
-import 'features/sport/presentation/pages/sport_page.dart';
 import 'features/wealth/presentation/pages/wealth_page.dart';
 
 Future<void> main() async {
@@ -51,9 +48,6 @@ class _ShellState extends State<_Shell> {
     JapanesePage(),
     MindfulnessPage(),
     WealthPage(),
-    CreationPage(),
-    SocialPage(),
-    SportPage(),
   ];
 
   static const _tabs = <_TabDef>[
@@ -61,9 +55,6 @@ class _ShellState extends State<_Shell> {
     _TabDef(icon: Icons.translate_outlined, activeIcon: Icons.translate, label: 'JP'),
     _TabDef(icon: Icons.self_improvement_outlined, activeIcon: Icons.self_improvement, label: 'Mind'),
     _TabDef(icon: Icons.account_balance_outlined, activeIcon: Icons.account_balance, label: 'Wealth'),
-    _TabDef(icon: Icons.brush_outlined, activeIcon: Icons.brush, label: 'Create'),
-    _TabDef(icon: Icons.people_outline, activeIcon: Icons.people, label: 'Social'),
-    _TabDef(icon: Icons.fitness_center_outlined, activeIcon: Icons.fitness_center, label: 'Sport'),
   ];
 
   @override

@@ -11,7 +11,8 @@ class AddMindfulnessSessionUseCase {
     required MindfulnessCategory category,
     required int minutes,
   }) async {
-    if (minutes <= 0) {
+    // Relapse is a valid 0-minute log; all other categories require > 0.
+    if (category != MindfulnessCategory.addictionRelapse && minutes <= 0) {
       throw const ValidationException('Minutes must be greater than 0.');
     }
 

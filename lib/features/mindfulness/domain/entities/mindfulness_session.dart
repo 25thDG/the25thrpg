@@ -2,7 +2,9 @@ enum MindfulnessCategory {
   meditation,
   journaling,
   walking,
-  nonfiction;
+  nonfiction,
+  addiction,
+  addictionRelapse;
 
   String get displayName {
     switch (this) {
@@ -14,12 +16,38 @@ enum MindfulnessCategory {
         return 'Walking';
       case MindfulnessCategory.nonfiction:
         return 'Nonfiction';
+      case MindfulnessCategory.addiction:
+        return 'Clean Day';
+      case MindfulnessCategory.addictionRelapse:
+        return 'Relapsed';
     }
   }
 
+  /// Database representation — snake_case, used for all DB reads and writes.
+  String get dbValue {
+    switch (this) {
+      case MindfulnessCategory.meditation:
+        return 'meditation';
+      case MindfulnessCategory.journaling:
+        return 'journaling';
+      case MindfulnessCategory.walking:
+        return 'walking';
+      case MindfulnessCategory.nonfiction:
+        return 'nonfiction';
+      case MindfulnessCategory.addiction:
+        return 'addiction';
+      case MindfulnessCategory.addictionRelapse:
+        return 'addiction_relapse';
+    }
+  }
+
+  bool get isAddiction =>
+      this == MindfulnessCategory.addiction ||
+      this == MindfulnessCategory.addictionRelapse;
+
   static MindfulnessCategory fromString(String value) {
     return MindfulnessCategory.values.firstWhere(
-      (e) => e.name == value,
+      (e) => e.dbValue == value,
       orElse: () => throw ArgumentError('Unknown mindfulness category: $value'),
     );
   }

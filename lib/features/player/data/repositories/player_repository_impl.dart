@@ -10,13 +10,11 @@ class PlayerRepositoryImpl implements PlayerRepository {
 
   @override
   Future<PlayerStats> getPlayerStats() async {
-    final (japanese, mindfulness, sport, social, creation, wealth) = await (
+    final (japanese, mindfulness, wealth, streak) = await (
       _datasource.getJapaneseData(),
       _datasource.getMindfulnessData(),
-      _datasource.getSportData(),
-      _datasource.getSocialData(),
-      _datasource.getCreationData(),
       _datasource.getWealthData(),
+      _datasource.getGlobalStreak(),
     ).wait;
 
     final skills = [
@@ -24,35 +22,21 @@ class PlayerRepositoryImpl implements PlayerRepository {
         skill: SkillId.japanese,
         lifetimeMinutes: japanese.lifetimeMinutes,
         last30DaysMinutes: japanese.last30DaysMinutes,
+        minutesSinceTracking: japanese.minutesSinceTracking,
       ),
       SkillSummary(
         skill: SkillId.wealth,
         currentNetWorthEur: wealth.currentNetWorthEur,
+        monthlyGrowthEur: wealth.monthlyGrowthEur,
       ),
       SkillSummary(
         skill: SkillId.mindfulness,
         lifetimeMinutes: mindfulness.lifetimeMinutes,
         last30DaysMinutes: mindfulness.last30DaysMinutes,
-      ),
-      SkillSummary(
-        skill: SkillId.creation,
-        lifetimeMinutes: creation.lifetimeMinutes,
-        last30DaysMinutes: creation.last30DaysMinutes,
-        weightedPoints: creation.weightedPoints,
-      ),
-      SkillSummary(
-        skill: SkillId.social,
-        lifetimeMinutes: social.lifetimeMinutes,
-        last30DaysMinutes: social.last30DaysMinutes,
-      ),
-      SkillSummary(
-        skill: SkillId.sport,
-        lifetimeMinutes: sport.lifetimeMinutes,
-        last30DaysMinutes: sport.last30DaysMinutes,
-        trainedDaysLast30: sport.trainedDaysLast30,
+        minutesSinceTracking: mindfulness.minutesSinceTracking,
       ),
     ];
 
-    return PlayerStats(skills: skills);
+    return PlayerStats(skills: skills, streakDays: streak);
   }
 }

@@ -38,6 +38,9 @@ class MindfulnessTodaySection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    // Addiction sessions are managed by the dedicated addiction section.
+    final regularSessions =
+        sessions.where((s) => !s.category.isAddiction).toList();
 
     return SectionCard(
       title: 'Today  ·  ${_formatToday()}',
@@ -54,7 +57,7 @@ class MindfulnessTodaySection extends StatelessWidget {
               ),
             ),
           ),
-          if (sessions.isEmpty) ...[
+          if (regularSessions.isEmpty) ...[
             const SizedBox(height: 16),
             Text(
               'No sessions logged today.',
@@ -64,7 +67,7 @@ class MindfulnessTodaySection extends StatelessWidget {
             ),
           ] else ...[
             const SizedBox(height: 12),
-            ...sessions.map(
+            ...regularSessions.map(
               (s) => _SessionTile(
                 session: s,
                 onEdit: () => _handleEdit(context, s),

@@ -6,6 +6,7 @@ import '../../data/datasources/player_supabase_datasource.dart';
 import '../../data/repositories/player_repository_impl.dart';
 import '../controllers/player_controller.dart';
 import '../state/player_state.dart';
+import '../widgets/player_insights_panel.dart';
 import '../widgets/player_level_panel.dart';
 import '../widgets/rpg_colors.dart';
 import '../widgets/skill_radar_chart.dart';
@@ -158,6 +159,8 @@ class _PlayerPageState extends State<PlayerPage> {
             sliver: SliverList(
               delegate: SliverChildListDelegate([
                 PlayerLevelPanel(stats: stats),
+                const SizedBox(height: 12),
+                PlayerInsightsPanel(stats: stats),
                 const SizedBox(height: 12),
                 SkillRadarChart(skills: stats.skills),
                 const SizedBox(height: 12),
