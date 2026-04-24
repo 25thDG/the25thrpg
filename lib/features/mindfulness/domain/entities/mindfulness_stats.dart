@@ -22,11 +22,23 @@ class MindfulnessStats {
   /// Consecutive clean (addiction-free) days ending today.
   final int addictionStreak;
 
+  /// Longest ever clean streak (days).
+  final int longestAddictionStreak;
+
   /// Whether today has been logged as a clean day (and no relapse recorded).
   final bool isCleanToday;
 
   /// Whether today has been logged as a relapse.
   final bool isRelapsedToday;
+
+  /// Per-day addiction log for history display.
+  /// Key = 'YYYY-M-D', value = true (clean) or false (relapsed).
+  /// Missing key means unlogged.
+  final Map<String, bool> addictionDayHistory;
+
+  /// Raw addiction sessions — used to find session IDs for deletion when
+  /// editing a past day's status.
+  final List<MindfulnessSession> addictionSessions;
 
   const MindfulnessStats({
     required this.lifetimeMinutes,
@@ -35,7 +47,10 @@ class MindfulnessStats {
     required this.last30DaysMinutes,
     required this.best30DayMinutes,
     required this.addictionStreak,
+    required this.longestAddictionStreak,
     required this.isCleanToday,
     required this.isRelapsedToday,
+    required this.addictionDayHistory,
+    required this.addictionSessions,
   });
 }

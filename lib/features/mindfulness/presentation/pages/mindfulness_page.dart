@@ -138,6 +138,7 @@ class _MindfulnessPageState extends State<MindfulnessPage> {
                   MindfulnessAddictionSection(
                     stats: state.stats!,
                     onLog: _controller.logAddictionDay,
+                    onLogForDate: _controller.logAddictionForDate,
                   ),
                 ],
                 // 5. Today logging

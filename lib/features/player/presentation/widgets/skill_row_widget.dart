@@ -13,11 +13,13 @@ import 'rpg_colors.dart';
 class SkillRowWidget extends StatelessWidget {
   final SkillSummary skill;
   final Animation<double> animation;
+  final VoidCallback? onTap;
 
   const SkillRowWidget({
     super.key,
     required this.skill,
     required this.animation,
+    this.onTap,
   });
 
   static Color _skillColor(SkillId id) {
@@ -42,45 +44,48 @@ class SkillRowWidget extends StatelessWidget {
           begin: const Offset(0, 0.18),
           end: Offset.zero,
         ).animate(animation),
-        child: IntrinsicHeight(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Colored left accent bar
-              Container(
-                width: 3,
-                color: skill.isActive
-                    ? accentColor
-                    : accentColor.withValues(alpha: 0.25),
-              ),
-              // Row content
-              Expanded(
-                child: Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      // LEFT — name + descriptor
-                      Expanded(
-                        flex: 5,
-                        child: _NameColumn(skill: skill),
-                      ),
-                      // CENTER — level / mastery
-                      SizedBox(
-                        width: 72,
-                        child: _LevelDisplay(skill: skill),
-                      ),
-                      // RIGHT — bar + status
-                      Expanded(
-                        flex: 5,
-                        child: _ProgressColumn(skill: skill),
-                      ),
-                    ],
+        child: InkWell(
+          onTap: onTap,
+          child: IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Colored left accent bar
+                Container(
+                  width: 3,
+                  color: skill.isActive
+                      ? accentColor
+                      : accentColor.withValues(alpha: 0.25),
+                ),
+                // Row content
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 20, vertical: 16),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        // LEFT — name + descriptor
+                        Expanded(
+                          flex: 5,
+                          child: _NameColumn(skill: skill),
+                        ),
+                        // CENTER — level / mastery
+                        SizedBox(
+                          width: 72,
+                          child: _LevelDisplay(skill: skill),
+                        ),
+                        // RIGHT — bar + status
+                        Expanded(
+                          flex: 5,
+                          child: _ProgressColumn(skill: skill),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

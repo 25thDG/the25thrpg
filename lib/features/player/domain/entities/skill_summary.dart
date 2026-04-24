@@ -216,6 +216,76 @@ class SkillSummary {
     }
   }
 
+  // ── Next 5 level milestones ────────────────────────────────────────────────
+
+  /// Returns the next [count] level or mastery milestones from the current
+  /// position. Each entry includes the amount remaining from now and, for
+  /// wealth only, the absolute target net-worth threshold.
+  List<({int level, bool isMastery, String remaining, String? target})>
+      nextLevelMilestones({int count = 5}) {
+    final raw = _rawLevel;
+
+    if (raw >= 100) {
+      return List.generate(count, (i) {
+        final targetMastery = mastery + i + 1;
+        return (
+          level: targetMastery,
+          isMastery: true,
+          remaining: _remainingForMastery(targetMastery),
+          target: _wealthMasteryTarget(targetMastery),
+        );
+      });
+    }
+
+    return List.generate(count, (i) {
+      final targetLevel = level + i + 1;
+      if (targetLevel <= 100) {
+        return (
+          level: targetLevel,
+          isMastery: false,
+          remaining: _remainingForTarget(targetLevel),
+          target: _wealthLevelTarget(targetLevel),
+        );
+      }
+      // Overflow into mastery
+      final targetMastery = targetLevel - 100;
+      return (
+        level: targetMastery,
+        isMastery: true,
+        remaining: _remainingForMastery(targetMastery),
+        target: _wealthMasteryTarget(targetMastery),
+      );
+    });
+  }
+
+  /// Absolute net-worth threshold for a regular wealth level (null for non-wealth).
+  String? _wealthLevelTarget(int targetLevel) {
+    if (skill != SkillId.wealth) return null;
+    final thresh = pow(targetLevel / 100.0, 2) * 1_000_000;
+    return _fmtEur(thresh.ceil());
+  }
+
+  /// Absolute net-worth threshold for a wealth mastery tier (null for non-wealth).
+  String? _wealthMasteryTarget(int targetMastery) {
+    if (skill != SkillId.wealth) return null;
+    final thresh = 1_000_000.0 + targetMastery * 250_000.0;
+    return _fmtEur(thresh.ceil());
+  }
+
+  String _remainingForMastery(int targetMastery) {
+    switch (skill) {
+      case SkillId.japanese:
+        final needed = 2200.0 + targetMastery * 200.0;
+        return _fmtTime(needed - _hours);
+      case SkillId.wealth:
+        final needed = 1_000_000.0 + targetMastery * 250_000.0;
+        return _fmtEur((needed - currentNetWorthEur).ceil());
+      case SkillId.mindfulness:
+        final needed = 10_000.0 + targetMastery * 1_000.0;
+        return _fmtTime((needed - lifetimeMinutes) / 60.0);
+    }
+  }
+
   // ── Daily average (time-based skills only) ─────────────────────────────────
 
   static final _trackingStart = DateTime(2026, 4, 11);

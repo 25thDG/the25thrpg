@@ -113,14 +113,37 @@ class MindfulnessController extends ChangeNotifier {
   }
 
   /// Logs today's addiction status.
-  /// [isClean] = true → clean day (10 min equivalent); false → relapsed.
+  /// 1 minute is stored for both outcomes — the DB requires > 0,
+  /// and addiction sessions are excluded from all meditation stats.
   Future<String?> logAddictionDay({required bool isClean}) async {
+    return logAddictionForDate(isClean: isClean, date: DateTime.now());
+  }
+
+  /// Logs or overwrites addiction status for any given date.
+  /// Deletes all existing addiction sessions for that day, then adds a new one.
+  Future<String?> logAddictionForDate({
+    required bool isClean,
+    required DateTime date,
+  }) async {
     try {
+      final stats = _state.stats;
+      if (stats != null) {
+        final key =
+            '${date.year}-${date.month}-${date.day}';
+        final toDelete = stats.addictionSessions.where((s) {
+          final d = s.sessionAt.toLocal();
+          return '${d.year}-${d.month}-${d.day}' == key;
+        });
+        for (final s in toDelete) {
+          await _deleteSession.execute(s.id);
+        }
+      }
       await _addSession.execute(
         category: isClean
             ? MindfulnessCategory.addiction
             : MindfulnessCategory.addictionRelapse,
-        minutes: isClean ? 10 : 0,
+        minutes: 1,
+        sessionAt: date,
       );
       await load();
       return null;

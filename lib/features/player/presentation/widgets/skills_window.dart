@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../domain/entities/skill_summary.dart';
 import 'rpg_colors.dart';
+import 'skill_milestone_sheet.dart';
 import 'skill_row_widget.dart';
 
 /// The full-width framed Skills table — lists all tracked skills
@@ -71,6 +72,7 @@ class _SkillsWindowState extends State<SkillsWindow>
                   key: ValueKey(skill.skill),
                   skill: skill,
                   animation: _rowAnimations[i],
+                  onTap: () => showSkillMilestoneSheet(context, skill),
                 ),
                 if (!isLast)
                   const Divider(

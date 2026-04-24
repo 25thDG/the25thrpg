@@ -97,11 +97,13 @@ class PlayerSupabaseDatasource {
       final isAddiction =
           category == 'addiction' || category == 'addiction_relapse';
 
+      // Addiction sessions are excluded from all meditation stats
+      if (isAddiction) continue;
+
       lifetime += m;
       final at = DateTime.parse(row['session_at'] as String).toLocal();
       if (at.isAfter(cutoff)) last30 += m;
-      // Exclude addiction sessions from the daily average tracking
-      if (!isAddiction && !at.isBefore(_trackingStart)) sinceTracking += m;
+      if (!at.isBefore(_trackingStart)) sinceTracking += m;
     }
 
     return PlayerTimeRaw(

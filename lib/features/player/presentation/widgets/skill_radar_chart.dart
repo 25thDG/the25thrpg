@@ -4,7 +4,14 @@ import 'package:flutter/material.dart';
 import '../../domain/entities/skill_summary.dart';
 import 'rpg_colors.dart';
 
-/// Triangular radar chart displaying the 3 core skill levels (capped at 100).
+// Label clearance constants (shared between widget sizing and painter)
+const _sidePad = 58.0; // horizontal space reserved for side labels
+const _topPad = 44.0; // vertical space above top vertex for its label
+const _botPad = 22.0; // vertical space below bottom vertices
+const _labelGap = 14.0; // gap between vertex and label anchor
+
+/// Triangular radar chart — box is sized exactly to contain the triangle
+/// plus its labels, with no wasted whitespace.
 class SkillRadarChart extends StatelessWidget {
   final List<SkillSummary> skills;
 
@@ -24,10 +31,21 @@ class SkillRadarChart extends StatelessWidget {
         children: [
           _RadarHeader(),
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 24, 16, 20),
-            child: AspectRatio(
-              aspectRatio: 1.0,
-              child: _AnimatedRadar(skills: skills),
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 14),
+            child: LayoutBuilder(
+              builder: (_, constraints) {
+                // Radius constrained by horizontal space after side labels.
+                // Triangle width = r * √3, so r = availableWidth / √3.
+                final r = (constraints.maxWidth - 2 * _sidePad) / sqrt(3);
+                // Exact height: label above top vertex + triangle height + label below.
+                // Triangle spans r above centre and r/2 below (equilateral geometry).
+                final h = _topPad + r + r / 2 + _botPad;
+                return SizedBox(
+                  width: constraints.maxWidth,
+                  height: h,
+                  child: _AnimatedRadar(skills: skills),
+                );
+              },
             ),
           ),
         ],
@@ -77,7 +95,7 @@ class _AnimatedRadarState extends State<_AnimatedRadar>
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1200),
+      duration: const Duration(milliseconds: 1400),
     );
     _animation = CurvedAnimation(
       parent: _controller,
@@ -112,25 +130,36 @@ class _RadarPainter extends CustomPainter {
 
   _RadarPainter({required this.skills, required this.animationValue});
 
-  // Order for the triangle: top, then clockwise
   static const _displayOrder = [
     SkillId.japanese,
     SkillId.wealth,
     SkillId.mindfulness,
   ];
 
+  static const _skillColors = {
+    SkillId.japanese: Color(0xFF4FC3F7),
+    SkillId.wealth: Color(0xFFFFD54F),
+    SkillId.mindfulness: Color(0xFF26A69A),
+  };
+
+  /// Sqrt-scale so low-level skills don't collapse to a point at centre.
+  /// Minimum floor of 0.05 keeps even level-1 skills visible.
+  static double _visualFrac(int level) =>
+      sqrt(level.clamp(0, 100) / 100.0).clamp(0.05, 1.0);
+
   @override
   void paint(Canvas canvas, Size size) {
-    final center = Offset(size.width / 2, size.height / 2);
-    final radius = size.width / 2 - 44; // leave room for labels
-    final n = _displayOrder.length;
+    // Mirror the same geometry as the widget's LayoutBuilder calculation.
+    final r = (size.width - 2 * _sidePad) / sqrt(3);
+    // Centre sits _topPad + r below the widget top (top vertex sits at _topPad).
+    final center = Offset(size.width / 2, _topPad + r);
+    const n = 3;
 
-    // Build lookup
     final skillMap = {for (final s in skills) s.skill: s};
 
-    // ── Grid rings at 25%, 50%, 75%, 100% ─────────────────────────────────
+    // ── Grid rings ────────────────────────────────────────────────────────────
     final gridPaint = Paint()
-      ..color = RpgColors.divider
+      ..color = RpgColors.divider.withValues(alpha: 0.7)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 0.8;
 
@@ -138,131 +167,134 @@ class _RadarPainter extends CustomPainter {
       final path = Path();
       for (int i = 0; i < n; i++) {
         final angle = -pi / 2 + (2 * pi / n) * i;
-        final r = radius * frac;
-        final p = Offset(center.dx + r * cos(angle), center.dy + r * sin(angle));
-        if (i == 0) {
-          path.moveTo(p.dx, p.dy);
-        } else {
-          path.lineTo(p.dx, p.dy);
-        }
+        final p = Offset(
+          center.dx + r * frac * cos(angle),
+          center.dy + r * frac * sin(angle),
+        );
+        i == 0 ? path.moveTo(p.dx, p.dy) : path.lineTo(p.dx, p.dy);
       }
       path.close();
       canvas.drawPath(path, gridPaint);
     }
 
-    // ── Axis lines ─────────────────────────────────────────────────────────
+    // ── Axis lines ────────────────────────────────────────────────────────────
     final axisPaint = Paint()
-      ..color = RpgColors.divider.withValues(alpha: 0.5)
+      ..color = RpgColors.divider.withValues(alpha: 0.4)
       ..strokeWidth = 0.5;
 
     for (int i = 0; i < n; i++) {
       final angle = -pi / 2 + (2 * pi / n) * i;
-      final end = Offset(
-        center.dx + radius * cos(angle),
-        center.dy + radius * sin(angle),
+      canvas.drawLine(
+        center,
+        Offset(center.dx + r * cos(angle), center.dy + r * sin(angle)),
+        axisPaint,
       );
-      canvas.drawLine(center, end, axisPaint);
     }
 
-    // ── Data polygon ──────────────────────────────────────────────────────
+    // ── Data polygon ──────────────────────────────────────────────────────────
     final dataPath = Path();
     final dataPoints = <Offset>[];
 
     for (int i = 0; i < n; i++) {
       final angle = -pi / 2 + (2 * pi / n) * i;
       final skill = skillMap[_displayOrder[i]];
-      final rawLevel = skill?.level ?? 1;
-      final frac = (rawLevel / 100.0).clamp(0.0, 1.0) * animationValue;
-      final r = radius * frac;
-      final p = Offset(center.dx + r * cos(angle), center.dy + r * sin(angle));
+      final frac = _visualFrac(skill?.level ?? 1) * animationValue;
+      final p = Offset(center.dx + r * frac * cos(angle), center.dy + r * frac * sin(angle));
       dataPoints.add(p);
-      if (i == 0) {
-        dataPath.moveTo(p.dx, p.dy);
-      } else {
-        dataPath.lineTo(p.dx, p.dy);
-      }
+      i == 0 ? dataPath.moveTo(p.dx, p.dy) : dataPath.lineTo(p.dx, p.dy);
     }
     dataPath.close();
 
-    // Fill
-    final fillPaint = Paint()
-      ..color = RpgColors.accent.withValues(alpha: 0.12)
-      ..style = PaintingStyle.fill;
-    canvas.drawPath(dataPath, fillPaint);
+    canvas.drawPath(
+      dataPath,
+      Paint()
+        ..color = RpgColors.accent.withValues(alpha: 0.15)
+        ..style = PaintingStyle.fill,
+    );
+    // Glow
+    canvas.drawPath(
+      dataPath,
+      Paint()
+        ..color = RpgColors.accent.withValues(alpha: 0.2)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 4
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4),
+    );
+    // Solid stroke
+    canvas.drawPath(
+      dataPath,
+      Paint()
+        ..color = RpgColors.accent.withValues(alpha: 0.75)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.5,
+    );
 
-    // Stroke
-    final strokePaint = Paint()
-      ..color = RpgColors.accent.withValues(alpha: 0.6)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.5;
-    canvas.drawPath(dataPath, strokePaint);
-
-    // ── Vertex dots ───────────────────────────────────────────────────────
-    final dotPaint = Paint()
-      ..color = RpgColors.accent
-      ..style = PaintingStyle.fill;
-
-    for (final p in dataPoints) {
-      canvas.drawCircle(p, 3, dotPaint);
+    // ── Vertex dots ───────────────────────────────────────────────────────────
+    for (int i = 0; i < dataPoints.length; i++) {
+      final color = _skillColors[_displayOrder[i]] ?? RpgColors.accent;
+      canvas.drawCircle(dataPoints[i], 5.5,
+          Paint()..color = color.withValues(alpha: 0.2));
+      canvas.drawCircle(dataPoints[i], 3,
+          Paint()..color = color..style = PaintingStyle.fill);
     }
 
-    // ── Labels ────────────────────────────────────────────────────────────
+    // ── Labels ────────────────────────────────────────────────────────────────
     for (int i = 0; i < n; i++) {
       final angle = -pi / 2 + (2 * pi / n) * i;
       final skillId = _displayOrder[i];
       final skill = skillMap[skillId];
       final lvl = skill?.level ?? 1;
-      final labelR = radius + 30;
-      final p = Offset(
-        center.dx + labelR * cos(angle),
-        center.dy + labelR * sin(angle),
+      final color = _skillColors[skillId] ?? RpgColors.accent;
+
+      // Anchor point just beyond the full-radius vertex
+      final anchor = Offset(
+        center.dx + (r + _labelGap) * cos(angle),
+        center.dy + (r + _labelGap) * sin(angle),
       );
 
-      final nameSpan = TextSpan(
-        text: skillId.displayName,
-        style: TextStyle(
-          color: RpgColors.textMuted.withValues(alpha: 0.8),
-          fontSize: 8,
-          fontWeight: FontWeight.w600,
-          letterSpacing: 1.0,
-        ),
-      );
       final namePainter = TextPainter(
-        text: nameSpan,
+        text: TextSpan(
+          text: skillId.displayName,
+          style: TextStyle(
+            color: color.withValues(alpha: 0.9),
+            fontSize: 7,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 1.0,
+          ),
+        ),
         textDirection: TextDirection.ltr,
       )..layout();
 
-      final levelSpan = TextSpan(
-        text: '$lvl',
-        style: const TextStyle(
-          color: RpgColors.textSecondary,
-          fontSize: 9,
-          fontWeight: FontWeight.w700,
-        ),
-      );
       final levelPainter = TextPainter(
-        text: levelSpan,
+        text: TextSpan(
+          text: 'Lv.$lvl',
+          style: TextStyle(
+            color: RpgColors.textSecondary.withValues(alpha: 0.85),
+            fontSize: 8,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
         textDirection: TextDirection.ltr,
       )..layout();
 
-      // Position label centered on axis endpoint
-      final totalHeight = namePainter.height + 2 + levelPainter.height;
+      final blockH = namePainter.height + 2 + levelPainter.height;
+
+      // Top vertex (i==0): render block ABOVE the anchor.
+      // Side vertices: centre block vertically on the anchor.
+      final topY = i == 0
+          ? anchor.dy - blockH - 2
+          : anchor.dy - blockH / 2;
+
       namePainter.paint(
-        canvas,
-        Offset(p.dx - namePainter.width / 2, p.dy - totalHeight / 2),
-      );
+          canvas, Offset(anchor.dx - namePainter.width / 2, topY));
       levelPainter.paint(
-        canvas,
-        Offset(
-          p.dx - levelPainter.width / 2,
-          p.dy - totalHeight / 2 + namePainter.height + 2,
-        ),
-      );
+          canvas,
+          Offset(anchor.dx - levelPainter.width / 2,
+              topY + namePainter.height + 2));
     }
   }
 
   @override
-  bool shouldRepaint(covariant _RadarPainter oldDelegate) =>
-      animationValue != oldDelegate.animationValue ||
-      skills != oldDelegate.skills;
+  bool shouldRepaint(covariant _RadarPainter old) =>
+      animationValue != old.animationValue || skills != old.skills;
 }
