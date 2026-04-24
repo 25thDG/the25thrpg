@@ -1,140 +1,134 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/theme/rpg_colors.dart';
 import '../../domain/entities/wealth_stats.dart';
-import 'section_card.dart';
 import 'wealth_formatters.dart';
+
+const _colorGold = Color(0xFFFFD54F);
+const _target = 1_000_000.0;
 
 class WealthMillionSection extends StatelessWidget {
   final WealthStats stats;
 
   const WealthMillionSection({super.key, required this.stats});
 
-  static const _target = 1_000_000.0;
-
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final current = stats.currentNetWorth;
-
     if (current == null || !stats.hasData) return const SizedBox.shrink();
 
-    Widget content;
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: BoxDecoration(
+        color: RpgColors.panelBg,
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: RpgColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: double.infinity,
+            padding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            decoration: const BoxDecoration(
+              border:
+                  Border(bottom: BorderSide(color: RpgColors.divider)),
+            ),
+            child: const Text(
+              '€1M GOAL',
+              style: TextStyle(
+                color: RpgColors.textMuted,
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 2.4,
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+            child: _buildContent(current),
+          ),
+        ],
+      ),
+    );
+  }
 
-    if (current >= _target) {
-      content = _buildReached(theme);
-    } else if (stats.monthlyHistory.length < 2) {
-      content = _buildNeedMoreData(theme, current);
-    } else {
-      final avgMonthlyGrowth = _calcAvgMonthlyGrowth();
-      if (avgMonthlyGrowth <= 0) {
-        content = _buildNotGrowing(theme, current, avgMonthlyGrowth);
-      } else {
-        final monthsLeft = (_target - current) / avgMonthlyGrowth;
-        final targetDate = _addMonths(DateTime.now(), monthsLeft.ceil());
-        content = _buildProjection(
-            theme, current, avgMonthlyGrowth, monthsLeft, targetDate);
-      }
+  Widget _buildContent(double current) {
+    if (current >= _target) return _buildReached();
+
+    if (stats.monthlyHistory.length < 2) {
+      return _buildNeedMoreData(current);
     }
 
-    return SectionCard(title: '\u20ac1M Goal', child: content);
+    final avgMonthlyGrowth = _calcAvgMonthlyGrowth();
+    if (avgMonthlyGrowth <= 0) {
+      return _buildNotGrowing(current, avgMonthlyGrowth);
+    }
+
+    final monthsLeft = (_target - current) / avgMonthlyGrowth;
+    final targetDate = _addMonths(DateTime.now(), monthsLeft.ceil());
+    return _buildProjection(current, avgMonthlyGrowth, monthsLeft, targetDate);
   }
 
-  double _calcAvgMonthlyGrowth() {
-    final h = stats.monthlyHistory;
-    final first = h.first;
-    final last = h.last;
-    final months = (last.snapshotMonth.year - first.snapshotMonth.year) * 12 +
-        (last.snapshotMonth.month - first.snapshotMonth.month);
-    if (months == 0) return last.netWorthEur - first.netWorthEur;
-    return (last.netWorthEur - first.netWorthEur) / months;
-  }
-
-  DateTime _addMonths(DateTime date, int months) {
-    var m = date.month + months;
-    final y = date.year + (m - 1) ~/ 12;
-    m = ((m - 1) % 12) + 1;
-    return DateTime(y, m, 1);
-  }
-
-  Widget _buildReached(ThemeData theme) {
-    return Row(
+  Widget _buildReached() {
+    return const Row(
       children: [
-        const SizedBox(width: 4),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                "You've reached \u20ac1,000,000!",
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: Colors.green,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'Goal achieved.',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
-                ),
-              ),
-            ],
+        Icon(Icons.emoji_events_rounded, color: _colorGold, size: 22),
+        SizedBox(width: 10),
+        Text(
+          "You've reached €1,000,000!",
+          style: TextStyle(
+            color: _colorGold,
+            fontSize: 15,
+            fontWeight: FontWeight.w700,
           ),
         ),
       ],
     );
   }
 
-  Widget _buildNeedMoreData(ThemeData theme, double current) {
+  Widget _buildNeedMoreData(double current) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _ProgressBar(progress: current / _target, theme: theme),
+        _GoldBar(progress: current / _target),
         const SizedBox(height: 10),
         Text(
           '${fmtEur(_target - current)} remaining',
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-          ),
+          style: const TextStyle(color: RpgColors.textSecondary, fontSize: 13),
         ),
         const SizedBox(height: 4),
-        Text(
+        const Text(
           'Add more monthly snapshots to see your projected arrival date.',
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
-          ),
+          style: TextStyle(color: RpgColors.textMuted, fontSize: 11),
         ),
       ],
     );
   }
 
-  Widget _buildNotGrowing(ThemeData theme, double current, double growth) {
+  Widget _buildNotGrowing(double current, double growth) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _ProgressBar(progress: current / _target, theme: theme),
+        _GoldBar(progress: current / _target),
         const SizedBox(height: 10),
         Text(
           '${fmtEur(_target - current)} remaining',
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-          ),
+          style: const TextStyle(color: RpgColors.textSecondary, fontSize: 13),
         ),
         const SizedBox(height: 4),
         Text(
           growth == 0
               ? 'No growth detected yet — keep adding snapshots!'
               : 'Net worth is declining (${fmtEurCompact(growth)}/mo avg).',
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: theme.colorScheme.error.withValues(alpha: 0.85),
-          ),
+          style: const TextStyle(color: Color(0xFFEF5350), fontSize: 11),
         ),
       ],
     );
   }
 
   Widget _buildProjection(
-    ThemeData theme,
     double current,
     double avgMonthlyGrowth,
     double monthsLeft,
@@ -149,48 +143,58 @@ class WealthMillionSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _ProgressBar(progress: current / _target, theme: theme),
-        const SizedBox(height: 14),
+        _GoldBar(progress: current / _target),
+        const SizedBox(height: 16),
         Row(
           children: [
-            _Stat(
-              label: 'Estimated',
+            _StatChip(
+              label: 'ESTIMATED',
               value: fmtMonth(targetDate),
-              theme: theme,
-              highlighted: true,
+              highlight: true,
             ),
-            const SizedBox(width: 20),
-            _Stat(
-              label: 'Time left',
-              value: timeStr,
-              theme: theme,
-            ),
-            const SizedBox(width: 20),
-            _Stat(
-              label: 'Avg/month',
+            const SizedBox(width: 16),
+            _StatChip(label: 'TIME LEFT', value: timeStr),
+            const SizedBox(width: 16),
+            _StatChip(
+              label: 'AVG/MONTH',
               value:
                   '${avgMonthlyGrowth >= 0 ? '+' : ''}${fmtEurCompact(avgMonthlyGrowth)}',
-              theme: theme,
             ),
           ],
         ),
         const SizedBox(height: 10),
         Text(
           '${fmtEur(_target - current)} remaining',
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: theme.colorScheme.onSurface.withValues(alpha: 0.45),
+          style: const TextStyle(
+            color: RpgColors.textMuted,
+            fontSize: 11,
+            letterSpacing: 0.2,
           ),
         ),
       ],
     );
   }
+
+  double _calcAvgMonthlyGrowth() {
+    final h = stats.monthlyHistory;
+    final months = (h.last.snapshotMonth.year - h.first.snapshotMonth.year) *
+            12 +
+        (h.last.snapshotMonth.month - h.first.snapshotMonth.month);
+    if (months == 0) return h.last.netWorthEur - h.first.netWorthEur;
+    return (h.last.netWorthEur - h.first.netWorthEur) / months;
+  }
+
+  DateTime _addMonths(DateTime date, int months) {
+    var m = date.month + months;
+    final y = date.year + (m - 1) ~/ 12;
+    m = ((m - 1) % 12) + 1;
+    return DateTime(y, m, 1);
+  }
 }
 
-class _ProgressBar extends StatelessWidget {
+class _GoldBar extends StatelessWidget {
   final double progress;
-  final ThemeData theme;
-
-  const _ProgressBar({required this.progress, required this.theme});
+  const _GoldBar({required this.progress});
 
   @override
   Widget build(BuildContext context) {
@@ -202,28 +206,41 @@ class _ProgressBar extends StatelessWidget {
           children: [
             Text(
               '${(progress * 100).toStringAsFixed(1)}%',
-              style: theme.textTheme.labelMedium?.copyWith(
+              style: const TextStyle(
+                color: _colorGold,
+                fontSize: 11,
                 fontWeight: FontWeight.w700,
-                color: theme.colorScheme.primary,
               ),
             ),
-            Text(
-              '\u20ac1,000,000',
-              style: theme.textTheme.labelSmall?.copyWith(
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.45),
-              ),
+            const Text(
+              '€1,000,000',
+              style: TextStyle(color: RpgColors.textMuted, fontSize: 10),
             ),
           ],
         ),
         const SizedBox(height: 6),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(4),
-          child: LinearProgressIndicator(
-            value: progress.clamp(0.0, 1.0),
-            minHeight: 8,
-            backgroundColor:
-                theme.colorScheme.outlineVariant.withValues(alpha: 0.3),
-            valueColor: AlwaysStoppedAnimation(theme.colorScheme.primary),
+        TweenAnimationBuilder<double>(
+          tween: Tween(begin: 0.0, end: progress.clamp(0.0, 1.0)),
+          duration: const Duration(milliseconds: 1200),
+          curve: Curves.easeOutCubic,
+          builder: (_, v, _) => ClipRRect(
+            borderRadius: BorderRadius.circular(2),
+            child: Stack(
+              children: [
+                Container(height: 6, color: RpgColors.progressTrack),
+                FractionallySizedBox(
+                  widthFactor: v,
+                  child: Container(
+                    height: 6,
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [_colorGold, Color(0xFFFFEE58)],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ],
@@ -231,17 +248,15 @@ class _ProgressBar extends StatelessWidget {
   }
 }
 
-class _Stat extends StatelessWidget {
+class _StatChip extends StatelessWidget {
   final String label;
   final String value;
-  final ThemeData theme;
-  final bool highlighted;
+  final bool highlight;
 
-  const _Stat({
+  const _StatChip({
     required this.label,
     required this.value,
-    required this.theme,
-    this.highlighted = false,
+    this.highlight = false,
   });
 
   @override
@@ -250,21 +265,22 @@ class _Stat extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          label.toUpperCase(),
-          style: theme.textTheme.labelSmall?.copyWith(
-            color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
-            fontSize: 9,
-            letterSpacing: 1.5,
+          label,
+          style: const TextStyle(
+            color: RpgColors.textMuted,
+            fontSize: 8,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 1.4,
           ),
         ),
-        const SizedBox(height: 2),
+        const SizedBox(height: 3),
         Text(
           value,
-          style: theme.textTheme.bodyMedium?.copyWith(
+          style: TextStyle(
+            color: highlight ? _colorGold : RpgColors.textPrimary,
+            fontSize: 13,
             fontWeight: FontWeight.w700,
-            color: highlighted
-                ? theme.colorScheme.primary
-                : theme.colorScheme.onSurface,
+            letterSpacing: -0.3,
           ),
         ),
       ],

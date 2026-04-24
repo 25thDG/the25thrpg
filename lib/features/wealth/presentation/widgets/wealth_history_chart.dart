@@ -3,9 +3,11 @@ import 'dart:ui' show lerpDouble;
 
 import 'package:flutter/material.dart';
 
+import '../../../../core/theme/rpg_colors.dart';
 import '../../domain/entities/wealth_snapshot.dart';
-import 'section_card.dart';
 import 'wealth_formatters.dart';
+
+const _colorGold = Color(0xFFFFD54F);
 
 class WealthHistoryChart extends StatefulWidget {
   final List<WealthSnapshot> history;
@@ -22,20 +24,17 @@ class _WealthHistoryChartState extends State<WealthHistoryChart> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final history = widget.history;
 
     Widget chartContent;
 
     if (history.isEmpty) {
-      chartContent = SizedBox(
+      chartContent = const SizedBox(
         height: 120,
         child: Center(
           child: Text(
             'No history yet.',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
-            ),
+            style: TextStyle(color: RpgColors.textMuted, fontSize: 13),
           ),
         ),
       );
@@ -45,7 +44,11 @@ class _WealthHistoryChartState extends State<WealthHistoryChart> {
         child: Center(
           child: Text(
             '${fmtMonth(history.first.snapshotMonth)} — ${fmtEur(history.first.netWorthEur)}',
-            style: theme.textTheme.bodyMedium,
+            style: const TextStyle(
+              color: RpgColors.textPrimary,
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ),
       );
@@ -67,22 +70,20 @@ class _WealthHistoryChartState extends State<WealthHistoryChart> {
                   painter: _ChartPainter(
                     history: history,
                     touchedIndex: _touchedIndex,
-                    lineColor: theme.colorScheme.primary,
-                    gridColor: theme.colorScheme.outlineVariant
-                        .withValues(alpha: 0.3),
-                    tooltipBg: theme.colorScheme.surfaceContainerHighest,
-                    tooltipTextColor: theme.colorScheme.onSurface,
+                    lineColor: _colorGold,
+                    gridColor: RpgColors.divider,
+                    tooltipBg: RpgColors.panelBgAlt,
+                    tooltipTextColor: RpgColors.textPrimary,
                   ),
                 ),
               ),
             ),
           ),
           const SizedBox(height: 6),
-          _XLabels(history: history, theme: theme),
+          _XLabels(history: history),
           const SizedBox(height: 10),
-          InkWell(
+          GestureDetector(
             onTap: () => setState(() => _showList = !_showList),
-            borderRadius: BorderRadius.circular(8),
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 4),
               child: Row(
@@ -90,14 +91,16 @@ class _WealthHistoryChartState extends State<WealthHistoryChart> {
                 children: [
                   Text(
                     _showList ? 'Hide entries' : 'Show all entries',
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: theme.colorScheme.primary,
+                    style: const TextStyle(
+                      color: _colorGold,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                   Icon(
                     _showList ? Icons.expand_less : Icons.expand_more,
                     size: 16,
-                    color: theme.colorScheme.primary,
+                    color: _colorGold,
                   ),
                 ],
               ),
@@ -105,19 +108,18 @@ class _WealthHistoryChartState extends State<WealthHistoryChart> {
           ),
           if (_showList) ...[
             const SizedBox(height: 8),
-            // Header row
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 4),
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 4),
               child: Row(
                 children: [
                   Expanded(
                     flex: 3,
                     child: Text(
                       'MONTH',
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color:
-                            theme.colorScheme.onSurface.withValues(alpha: 0.4),
+                      style: TextStyle(
+                        color: RpgColors.textMuted,
                         fontSize: 9,
+                        fontWeight: FontWeight.w600,
                         letterSpacing: 1.5,
                       ),
                     ),
@@ -127,10 +129,10 @@ class _WealthHistoryChartState extends State<WealthHistoryChart> {
                     child: Text(
                       'NET WORTH',
                       textAlign: TextAlign.center,
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color:
-                            theme.colorScheme.onSurface.withValues(alpha: 0.4),
+                      style: TextStyle(
+                        color: RpgColors.textMuted,
                         fontSize: 9,
+                        fontWeight: FontWeight.w600,
                         letterSpacing: 1.5,
                       ),
                     ),
@@ -140,10 +142,10 @@ class _WealthHistoryChartState extends State<WealthHistoryChart> {
                     child: Text(
                       'CHANGE',
                       textAlign: TextAlign.right,
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color:
-                            theme.colorScheme.onSurface.withValues(alpha: 0.4),
+                      style: TextStyle(
+                        color: RpgColors.textMuted,
                         fontSize: 9,
+                        fontWeight: FontWeight.w600,
                         letterSpacing: 1.5,
                       ),
                     ),
@@ -151,29 +153,60 @@ class _WealthHistoryChartState extends State<WealthHistoryChart> {
                 ],
               ),
             ),
-            const Divider(height: 1),
+            const Divider(height: 1, color: RpgColors.divider),
             ...List.generate(history.length, (i) {
-              // Newest first
               final snap = history[history.length - 1 - i];
               final prevIdx = history.length - 2 - i;
               final delta = prevIdx >= 0
                   ? snap.netWorthEur - history[prevIdx].netWorthEur
                   : null;
-              return _HistoryRow(
-                  snapshot: snap, delta: delta, theme: theme);
+              return _HistoryRow(snapshot: snap, delta: delta);
             }),
           ],
         ],
       );
     }
 
-    return SectionCard(title: 'History', child: chartContent);
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: BoxDecoration(
+        color: RpgColors.panelBg,
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: RpgColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: double.infinity,
+            padding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            decoration: const BoxDecoration(
+              border:
+                  Border(bottom: BorderSide(color: RpgColors.divider)),
+            ),
+            child: const Text(
+              'HISTORY',
+              style: TextStyle(
+                color: RpgColors.textMuted,
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 2.4,
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(8, 16, 8, 12),
+            child: chartContent,
+          ),
+        ],
+      ),
+    );
   }
 
   void _onTouch(double dx, double width) {
     const hPad = 8.0;
-    final step =
-        (width - hPad * 2) / (widget.history.length - 1);
+    final step = (width - hPad * 2) / (widget.history.length - 1);
     final idx =
         ((dx - hPad) / step).round().clamp(0, widget.history.length - 1);
     setState(() => _touchedIndex = idx);
@@ -182,20 +215,17 @@ class _WealthHistoryChartState extends State<WealthHistoryChart> {
 
 class _XLabels extends StatelessWidget {
   final List<WealthSnapshot> history;
-  final ThemeData theme;
-
-  const _XLabels({required this.history, required this.theme});
+  const _XLabels({required this.history});
 
   @override
   Widget build(BuildContext context) {
-    final labelStyle = theme.textTheme.labelSmall?.copyWith(
-      color: theme.colorScheme.onSurface.withValues(alpha: 0.45),
-    );
+    const style =
+        TextStyle(color: RpgColors.textMuted, fontSize: 9, letterSpacing: 0.3);
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(fmtMonth(history.first.snapshotMonth), style: labelStyle),
-        Text(fmtMonth(history.last.snapshotMonth), style: labelStyle),
+        Text(fmtMonth(history.first.snapshotMonth), style: style),
+        Text(fmtMonth(history.last.snapshotMonth), style: style),
       ],
     );
   }
@@ -204,10 +234,8 @@ class _XLabels extends StatelessWidget {
 class _HistoryRow extends StatelessWidget {
   final WealthSnapshot snapshot;
   final double? delta;
-  final ThemeData theme;
 
-  const _HistoryRow(
-      {required this.snapshot, required this.delta, required this.theme});
+  const _HistoryRow({required this.snapshot, required this.delta});
 
   @override
   Widget build(BuildContext context) {
@@ -215,19 +243,20 @@ class _HistoryRow extends StatelessWidget {
     final deltaColor = delta == null
         ? Colors.transparent
         : isPos
-            ? Colors.green
-            : theme.colorScheme.error;
+            ? const Color(0xFF66BB6A)
+            : const Color(0xFFEF5350);
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 9),
+      padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
         children: [
           Expanded(
             flex: 3,
             child: Text(
               fmtMonth(snapshot.snapshotMonth),
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+              style: const TextStyle(
+                color: RpgColors.textSecondary,
+                fontSize: 11,
               ),
             ),
           ),
@@ -236,7 +265,9 @@ class _HistoryRow extends StatelessWidget {
             child: Text(
               fmtEur(snapshot.netWorthEur),
               textAlign: TextAlign.center,
-              style: theme.textTheme.bodyMedium?.copyWith(
+              style: const TextStyle(
+                color: RpgColors.textPrimary,
+                fontSize: 12,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -248,8 +279,11 @@ class _HistoryRow extends StatelessWidget {
                 : Text(
                     '${isPos ? '+' : ''}${fmtEur(delta!)}',
                     textAlign: TextAlign.right,
-                    style: theme.textTheme.labelSmall
-                        ?.copyWith(color: deltaColor),
+                    style: TextStyle(
+                      color: deltaColor,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
           ),
         ],
@@ -310,7 +344,6 @@ class _ChartPainter extends CustomPainter {
           Offset(hPad, y), Offset(size.width - hPad, y), gridPaint);
     }
 
-    // Build line path
     final path = Path();
     for (int i = 0; i < history.length; i++) {
       final o = toOffset(i, history[i].netWorthEur);
@@ -366,7 +399,8 @@ class _ChartPainter extends CustomPainter {
             ..strokeWidth = 2,
         );
       } else if (isLast) {
-        canvas.drawCircle(o, 5, Paint()..color = const Color(0xFF131318));
+        canvas.drawCircle(
+            o, 5, Paint()..color = RpgColors.panelBg);
         canvas.drawCircle(
           o,
           5,
@@ -386,7 +420,6 @@ class _ChartPainter extends CustomPainter {
       final idx = touchedIndex!;
       final o = toOffset(idx, history[idx].netWorthEur);
 
-      // Vertical indicator line
       canvas.drawLine(
         Offset(o.dx, vPad),
         Offset(o.dx, size.height - vPad),
@@ -395,7 +428,6 @@ class _ChartPainter extends CustomPainter {
           ..strokeWidth = 1,
       );
 
-      // Tooltip
       const tPad = 6.0;
       final snap = history[idx];
       final label =
@@ -418,18 +450,15 @@ class _ChartPainter extends CustomPainter {
       final tooltipW = tp.width + tPad * 2;
       final tooltipH = tp.height + tPad * 2;
 
-      // Clamp horizontally so it never goes off-canvas
       double tx = o.dx - tooltipW / 2;
       tx = tx.clamp(0, size.width - tooltipW);
-
-      // Position above the dot, fall back below if too close to top
       double ty = o.dy - tooltipH - 10;
       if (ty < vPad) ty = o.dy + 10;
 
       canvas.drawRRect(
         RRect.fromRectAndRadius(
           Rect.fromLTWH(tx, ty, tooltipW, tooltipH),
-          const Radius.circular(6),
+          const Radius.circular(4),
         ),
         Paint()..color = tooltipBg,
       );
@@ -440,7 +469,5 @@ class _ChartPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_ChartPainter old) =>
-      old.history != history ||
-      old.touchedIndex != touchedIndex ||
-      old.lineColor != lineColor;
+      old.history != history || old.touchedIndex != touchedIndex;
 }

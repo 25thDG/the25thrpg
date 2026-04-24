@@ -10,9 +10,9 @@ import '../../data/datasources/japanese_supabase_datasource.dart';
 import '../../data/repositories/japanese_repository_impl.dart';
 import '../controllers/japanese_controller.dart';
 import '../state/japanese_state.dart';
+import '../../../../core/theme/rpg_colors.dart';
 import '../widgets/category_breakdown_section.dart';
 import '../widgets/lifetime_stats_section.dart';
-import '../widgets/rolling_window_section.dart';
 import '../widgets/today_sessions_section.dart';
 
 class JapanesePage extends StatefulWidget {
@@ -52,8 +52,21 @@ class _JapanesePageState extends State<JapanesePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: RpgColors.pageBg,
       appBar: AppBar(
-        title: const Text('JAPANESE'),
+        backgroundColor: RpgColors.pageBg,
+        foregroundColor: RpgColors.textSecondary,
+        scrolledUnderElevation: 0,
+        elevation: 0,
+        title: const Text(
+          'JAPANESE',
+          style: TextStyle(
+            color: RpgColors.textMuted,
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 2.8,
+          ),
+        ),
         centerTitle: false,
         actions: [
           ListenableBuilder(
@@ -64,14 +77,18 @@ class _JapanesePageState extends State<JapanesePage> {
                 return const Padding(
                   padding: EdgeInsets.only(right: 16),
                   child: SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 1.5,
+                      color: RpgColors.textMuted,
+                    ),
                   ),
                 );
               }
               return IconButton(
-                icon: const Icon(Icons.refresh),
+                icon: const Icon(Icons.refresh, size: 18),
+                color: RpgColors.textMuted,
                 onPressed: _controller.load,
                 tooltip: 'Refresh',
               );
@@ -129,8 +146,9 @@ class _JapanesePageState extends State<JapanesePage> {
               delegate: SliverChildListDelegate([
                 if (state.stats != null) ...[
                   LifetimeStatsSection(stats: state.stats!),
-                  RollingWindowSection(stats: state.stats!),
+                  const SizedBox(height: 12),
                   CategoryBreakdownSection(stats: state.stats!),
+                  const SizedBox(height: 12),
                 ],
                 TodaySessionsSection(
                   sessions: state.todaySessions,
