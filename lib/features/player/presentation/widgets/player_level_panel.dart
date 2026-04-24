@@ -45,7 +45,19 @@ class PlayerLevelPanel extends StatelessWidget {
 class _PanelHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          height: 3,
+          decoration: const BoxDecoration(
+            borderRadius: BorderRadius.vertical(top: Radius.circular(4)),
+            gradient: LinearGradient(
+              colors: [Color(0xFFC0392B), Color(0xFFE74C3C)],
+            ),
+          ),
+        ),
+        Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: const BoxDecoration(
@@ -60,6 +72,8 @@ class _PanelHeader extends StatelessWidget {
           letterSpacing: 2.4,
         ),
       ),
+        ),
+      ],
     );
   }
 }

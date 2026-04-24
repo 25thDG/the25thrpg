@@ -57,21 +57,35 @@ class SkillRadarChart extends StatelessWidget {
 class _RadarHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      decoration: const BoxDecoration(
-        border: Border(bottom: BorderSide(color: RpgColors.divider)),
-      ),
-      child: const Text(
-        'SKILL RADAR',
-        style: TextStyle(
-          color: RpgColors.textMuted,
-          fontSize: 10,
-          fontWeight: FontWeight.w600,
-          letterSpacing: 2.4,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          height: 3,
+          decoration: const BoxDecoration(
+            borderRadius: BorderRadius.vertical(top: Radius.circular(4)),
+            gradient: LinearGradient(
+              colors: [Color(0xFFC0392B), Color(0xFFE74C3C)],
+            ),
+          ),
         ),
-      ),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          decoration: const BoxDecoration(
+            border: Border(bottom: BorderSide(color: RpgColors.divider)),
+          ),
+          child: const Text(
+            'SKILL RADAR',
+            style: TextStyle(
+              color: RpgColors.textMuted,
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 2.4,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

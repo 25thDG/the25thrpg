@@ -11,6 +11,7 @@ import '../widgets/player_level_panel.dart';
 import '../widgets/rpg_colors.dart';
 import '../widgets/skill_radar_chart.dart';
 import '../widgets/skills_window.dart';
+import '../widgets/today_checkin_strip.dart';
 
 class PlayerPage extends StatefulWidget {
   const PlayerPage({super.key});
@@ -158,6 +159,8 @@ class _PlayerPageState extends State<PlayerPage> {
             padding: const EdgeInsets.only(top: 8, bottom: 40),
             sliver: SliverList(
               delegate: SliverChildListDelegate([
+                const TodayCheckInStrip(),
+                const SizedBox(height: 12),
                 PlayerLevelPanel(stats: stats),
                 const SizedBox(height: 12),
                 PlayerInsightsPanel(stats: stats),

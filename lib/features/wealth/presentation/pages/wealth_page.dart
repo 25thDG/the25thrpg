@@ -120,6 +120,9 @@ class _WealthPageState extends State<WealthPage> {
             padding: const EdgeInsets.only(top: 8, bottom: 32),
             sliver: SliverList(
               delegate: SliverChildListDelegate([
+                if (state.stats != null &&
+                    state.stats!.currentMonthSnapshot == null)
+                  _MissingSnapshotBanner(),
                 if (state.stats != null) ...[
                   // 1. Current net worth
                   WealthCurrentSection(stats: state.stats!),
@@ -141,6 +144,39 @@ class _WealthPageState extends State<WealthPage> {
                   onDelete: _controller.deleteSnapshot,
                 ),
               ]),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MissingSnapshotBanner extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFD54F).withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: const Color(0xFFFFD54F).withValues(alpha: 0.35)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.warning_amber_rounded,
+              color: Color(0xFFFFD54F), size: 18),
+          const SizedBox(width: 10),
+          const Expanded(
+            child: Text(
+              'No net worth logged this month. Scroll down to add a snapshot.',
+              style: TextStyle(
+                color: Color(0xFFFFD54F),
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                letterSpacing: 0.2,
+              ),
             ),
           ),
         ],
