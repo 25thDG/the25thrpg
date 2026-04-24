@@ -13,11 +13,15 @@ class BudgetSummary {
   final List<BudgetTransaction> transactions;
   final List<BudgetCategory> allCategories;
 
+  /// Total spent in the previous calendar month (null if unavailable).
+  final int? previousMonthSpentCents;
+
   const BudgetSummary({
     required this.totalSpentCents,
     required this.categoryTotals,
     required this.transactions,
     required this.allCategories,
+    this.previousMonthSpentCents,
   });
 
   double get spentFraction =>
@@ -29,7 +33,14 @@ class BudgetSummary {
   double get spentEur => totalSpentCents / 100.0;
   double get remainingEur => remainingCents / 100.0;
 
-  bool get isWarning => totalSpentCents >= kMonthlyBudgetCents * kBudgetWarningFraction;
+  bool get isWarning =>
+      totalSpentCents >= kMonthlyBudgetCents * kBudgetWarningFraction;
   bool get isOverBudget => totalSpentCents >= kMonthlyBudgetCents;
   bool get hasTransactions => transactions.isNotEmpty;
+
+  /// Positive = spending more than last month, negative = spending less.
+  double? get deltaVsLastMonthEur {
+    if (previousMonthSpentCents == null) return null;
+    return (totalSpentCents - previousMonthSpentCents!) / 100.0;
+  }
 }

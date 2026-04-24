@@ -15,6 +15,7 @@ import '../../domain/entities/budget_summary.dart';
 import '../controllers/budget_controller.dart';
 import '../state/budget_state.dart';
 import '../widgets/add_transaction_sheet.dart';
+import '../widgets/budget_burn_chart.dart';
 import '../widgets/budget_category_chart.dart';
 import '../widgets/budget_gauge.dart';
 import '../widgets/budget_transaction_list.dart';
@@ -225,8 +226,16 @@ class _BudgetPageState extends State<BudgetPage> {
                   )
                 else ...[
                   // ── Gauge ───────────────────────────────────────────
-                  _GaugePanel(summary: summary),
+                  _GaugePanel(
+                      summary: summary, month: state.selectedMonth),
                   const SizedBox(height: 12),
+
+                  // ── Burn rate chart ─────────────────────────────────
+                  if (summary.hasTransactions) ...[
+                    BudgetBurnChart(
+                        summary: summary, month: state.selectedMonth),
+                    const SizedBox(height: 12),
+                  ],
 
                   // ── Category chart ──────────────────────────────────
                   if (summary.hasTransactions) ...[
@@ -325,13 +334,48 @@ class _MonthNavigator extends StatelessWidget {
 
 // ── Gauge panel ───────────────────────────────────────────────────────────────
 
+Color _statusColor(BudgetSummary s) {
+  if (s.isOverBudget) return const Color(0xFFEF5350);
+  if (s.isWarning) return const Color(0xFFFF7043);
+  return const Color(0xFF26A69A);
+}
+
 class _GaugePanel extends StatelessWidget {
   final BudgetSummary summary;
+  final DateTime month;
 
-  const _GaugePanel({required this.summary});
+  const _GaugePanel({required this.summary, required this.month});
 
   @override
   Widget build(BuildContext context) {
+    final now = DateTime.now();
+    final color = _statusColor(summary);
+    final isCurrentMonth =
+        month.year == now.year && month.month == now.month;
+
+    // Daily allowance
+    final endOfMonth = DateTime(now.year, now.month + 1, 1);
+    final daysLeft = isCurrentMonth
+        ? endOfMonth.difference(DateTime(now.year, now.month, now.day)).inDays
+        : 0;
+    final dailyAllowance =
+        isCurrentMonth && daysLeft > 0 && !summary.isOverBudget
+            ? summary.remainingEur / daysLeft
+            : null;
+
+    // Month delta
+    final delta = summary.deltaVsLastMonthEur;
+    final deltaStr = delta == null
+        ? null
+        : delta >= 0
+            ? '+€${delta.toStringAsFixed(0)}'
+            : '-€${delta.abs().toStringAsFixed(0)}';
+    final deltaColor = delta == null
+        ? RpgColors.textMuted
+        : delta <= 0
+            ? const Color(0xFF26A69A)
+            : const Color(0xFFEF5350);
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
@@ -341,28 +385,172 @@ class _GaugePanel extends StatelessWidget {
       ),
       child: Column(
         children: [
-          // Header
+          // Colored accent bar
           Container(
-            width: double.infinity,
+            height: 3,
+            decoration: BoxDecoration(
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(4)),
+              gradient: LinearGradient(colors: [
+                color,
+                color.withValues(alpha: 0.3),
+              ]),
+            ),
+          ),
+
+          // Header row
+          Padding(
             padding:
                 const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            decoration: const BoxDecoration(
-              border: Border(bottom: BorderSide(color: RpgColors.divider)),
-            ),
-            child: const Text(
-              'MONTHLY BUDGET',
-              style: TextStyle(
-                color: RpgColors.textMuted,
-                fontSize: 10,
-                fontWeight: FontWeight.w600,
-                letterSpacing: 2.4,
-              ),
+            child: Row(
+              children: [
+                const Text(
+                  'MONTHLY BUDGET',
+                  style: TextStyle(
+                    color: RpgColors.textMuted,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 2.4,
+                  ),
+                ),
+                const Spacer(),
+                if (deltaStr != null)
+                  Row(
+                    children: [
+                      Icon(
+                        delta! <= 0
+                            ? Icons.arrow_downward
+                            : Icons.arrow_upward,
+                        size: 11,
+                        color: deltaColor,
+                      ),
+                      const SizedBox(width: 3),
+                      Text(
+                        '$deltaStr vs last month',
+                        style: TextStyle(
+                          color: deltaColor,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 0.3,
+                        ),
+                      ),
+                    ],
+                  ),
+              ],
             ),
           ),
+
+          Container(height: 0.5, color: RpgColors.divider),
+
+          // Gauge
           Padding(
-            padding: const EdgeInsets.symmetric(vertical: 24),
+            padding: const EdgeInsets.fromLTRB(16, 28, 16, 20),
             child: BudgetGauge(summary: summary),
           ),
+
+          // Stats row
+          if (isCurrentMonth) ...[
+            Container(height: 0.5, color: RpgColors.divider),
+            IntrinsicHeight(
+              child: Row(
+                children: [
+                  // Daily allowance
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 20, vertical: 16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'DAILY ALLOWANCE',
+                            style: TextStyle(
+                              color: RpgColors.textMuted,
+                              fontSize: 8,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: 1.6,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            dailyAllowance != null
+                                ? '€${dailyAllowance.toStringAsFixed(2)}'
+                                : summary.isOverBudget
+                                    ? 'OVER BUDGET'
+                                    : '—',
+                            style: TextStyle(
+                              color: dailyAllowance != null
+                                  ? color
+                                  : const Color(0xFFEF5350),
+                              fontSize: 22,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: -0.5,
+                              height: 1.0,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            '$daysLeft day${daysLeft == 1 ? '' : 's'} remaining',
+                            style: const TextStyle(
+                              color: RpgColors.textMuted,
+                              fontSize: 10,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  // Divider
+                  VerticalDivider(
+                      width: 1, color: RpgColors.divider, thickness: 0.5),
+                  // Remaining budget
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 20, vertical: 16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'REMAINING',
+                            style: TextStyle(
+                              color: RpgColors.textMuted,
+                              fontSize: 8,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: 1.6,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            summary.isOverBudget
+                                ? '-€${(summary.totalSpentCents - kMonthlyBudgetCents) ~/ 100}'
+                                : '€${summary.remainingEur.toStringAsFixed(2)}',
+                            style: TextStyle(
+                              color: color,
+                              fontSize: 22,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: -0.5,
+                              height: 1.0,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            summary.isOverBudget
+                                ? 'over the €300 limit'
+                                : 'of €300 budget',
+                            style: const TextStyle(
+                              color: RpgColors.textMuted,
+                              fontSize: 10,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );

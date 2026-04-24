@@ -8,12 +8,17 @@ class GetBudgetSummaryUseCase {
   const GetBudgetSummaryUseCase(this._repository);
 
   Future<BudgetSummary> execute(DateTime month) async {
-    final categories = await _repository.getCategories();
-    final transactions = await _repository.getTransactionsForMonth(month);
+    final prevMonth = DateTime(month.year, month.month - 1, 1);
+
+    // Fetch categories + current month + previous month in parallel
+    final (categories, transactions, prevTransactions) = await (
+      _repository.getCategories(),
+      _repository.getTransactionsForMonth(month),
+      _repository.getTransactionsForMonth(prevMonth),
+    ).wait;
 
     final categoryMap = {for (final c in categories) c.id: c};
 
-    // Tally cents per category
     final totals = <String, int>{};
     int grandTotal = 0;
     for (final t in transactions) {
@@ -27,11 +32,14 @@ class GetBudgetSummaryUseCase {
       if (cat != null) categoryTotals[cat] = entry.value;
     }
 
+    final prevTotal = prevTransactions.fold<int>(0, (s, t) => s + t.amountCents);
+
     return BudgetSummary(
       totalSpentCents: grandTotal,
       categoryTotals: categoryTotals,
       transactions: transactions,
       allCategories: categories,
+      previousMonthSpentCents: prevTotal,
     );
   }
 }

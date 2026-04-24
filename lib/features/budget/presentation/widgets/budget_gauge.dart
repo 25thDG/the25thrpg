@@ -33,7 +33,7 @@ class _BudgetGaugeState extends State<BudgetGauge>
   void initState() {
     super.initState();
     _ctrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 1200));
+        vsync: this, duration: const Duration(milliseconds: 1400));
     _anim = Tween(begin: 0.0, end: widget.summary.spentFraction)
         .animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOutCubic));
     _ctrl.forward();
@@ -59,59 +59,89 @@ class _BudgetGaugeState extends State<BudgetGauge>
   @override
   Widget build(BuildContext context) {
     final color = _gaugeColor(widget.summary);
+    final pct = (widget.summary.spentFraction * 100).round();
+
     return AnimatedBuilder(
       animation: _anim,
       builder: (_, _) => SizedBox(
-        width: 200,
-        height: 200,
+        width: 220,
+        height: 220,
         child: CustomPaint(
           painter: _GaugePainter(fraction: _anim.value, color: color),
           child: Center(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  '€${widget.summary.spentEur.toStringAsFixed(2)}',
-                  style: TextStyle(
-                    color: color,
-                    fontSize: 28,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -1,
-                    height: 1.0,
+                // Percentage badge
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 10, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                        color: color.withValues(alpha: 0.35), width: 1),
+                  ),
+                  child: Text(
+                    '$pct%',
+                    style: TextStyle(
+                      color: color,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 1.0,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                // Big spent amount
+                TweenAnimationBuilder<double>(
+                  tween: Tween(
+                      begin: 0, end: widget.summary.spentEur),
+                  duration: const Duration(milliseconds: 1400),
+                  curve: Curves.easeOutCubic,
+                  builder: (_, v, _) => Text(
+                    '€${v.toStringAsFixed(2)}',
+                    style: TextStyle(
+                      color: color,
+                      fontSize: 32,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -1.5,
+                      height: 1.0,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   'of €300 spent',
-                  style: const TextStyle(
-                    color: RpgColors.textMuted,
-                    fontSize: 10,
-                    letterSpacing: 0.5,
+                  style: TextStyle(
+                    color: RpgColors.textMuted.withValues(alpha: 0.8),
+                    fontSize: 11,
+                    letterSpacing: 0.3,
                   ),
                 ),
-                const SizedBox(height: 6),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-                  decoration: BoxDecoration(
-                    border:
-                        Border.all(color: color.withValues(alpha: 0.35)),
-                    borderRadius: BorderRadius.circular(3),
-                  ),
-                  child: Text(
-                    widget.summary.isOverBudget
-                        ? 'OVER BUDGET'
-                        : widget.summary.isWarning
-                            ? '${(widget.summary.spentFraction * 100).round()}%  WARNING'
-                            : '€${widget.summary.remainingEur.toStringAsFixed(0)} left',
+                if (widget.summary.isOverBudget) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    'OVER BUDGET',
                     style: TextStyle(
-                      color: color,
-                      fontSize: 9,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 1.2,
+                      color: _over,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 2.0,
                     ),
                   ),
-                ),
+                ] else if (widget.summary.isWarning) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    '⚠  WARNING',
+                    style: TextStyle(
+                      color: _warn,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 1.6,
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -130,10 +160,22 @@ class _GaugePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
-    final radius = size.width / 2 - 12;
-    const strokeWidth = 10.0;
-    const startAngle = pi * 0.75; // 135°
-    const sweepFull = pi * 1.5; // 270° arc
+    final radius = size.width / 2 - 14;
+    const strokeWidth = 12.0;
+    const startAngle = pi * 0.75;  // 135°
+    const sweepFull = pi * 1.5;    // 270° arc
+
+    // Outer subtle ring
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: radius + 8),
+      startAngle,
+      sweepFull,
+      false,
+      Paint()
+        ..color = color.withValues(alpha: 0.04)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2,
+    );
 
     // Track
     canvas.drawArc(
@@ -149,18 +191,31 @@ class _GaugePainter extends CustomPainter {
     );
 
     if (fraction > 0) {
-      // Glow
+      // Wide outer glow
       canvas.drawArc(
         Rect.fromCircle(center: center, radius: radius),
         startAngle,
         sweepFull * fraction,
         false,
         Paint()
-          ..color = color.withValues(alpha: 0.25)
+          ..color = color.withValues(alpha: 0.18)
           ..style = PaintingStyle.stroke
-          ..strokeWidth = strokeWidth + 6
+          ..strokeWidth = strokeWidth + 10
           ..strokeCap = StrokeCap.round
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6),
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8),
+      );
+      // Tight inner glow
+      canvas.drawArc(
+        Rect.fromCircle(center: center, radius: radius),
+        startAngle,
+        sweepFull * fraction,
+        false,
+        Paint()
+          ..color = color.withValues(alpha: 0.45)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = strokeWidth + 3
+          ..strokeCap = StrokeCap.round
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3),
       );
       // Solid arc
       canvas.drawArc(
@@ -174,6 +229,17 @@ class _GaugePainter extends CustomPainter {
           ..strokeWidth = strokeWidth
           ..strokeCap = StrokeCap.round,
       );
+      // Bright tip dot
+      final tipAngle = startAngle + sweepFull * fraction;
+      final tip = Offset(
+        center.dx + radius * cos(tipAngle),
+        center.dy + radius * sin(tipAngle),
+      );
+      canvas.drawCircle(tip, strokeWidth / 2 + 2,
+          Paint()..color = color.withValues(alpha: 0.3)
+            ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4));
+      canvas.drawCircle(tip, strokeWidth / 2 - 1,
+          Paint()..color = Colors.white.withValues(alpha: 0.9));
     }
   }
 
