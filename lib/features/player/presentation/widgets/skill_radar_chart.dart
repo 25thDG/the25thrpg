@@ -152,7 +152,7 @@ class _RadarPainter extends CustomPainter {
 
   static const _skillColors = {
     SkillId.japanese: Color(0xFF4FC3F7),
-    SkillId.wealth: Color(0xFFFFD54F),
+    SkillId.wealth: Color(0xFF10B981),
     SkillId.mindfulness: Color(0xFF26A69A),
   };
 

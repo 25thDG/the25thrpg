@@ -4,7 +4,7 @@ import '../../../../core/theme/rpg_colors.dart';
 import '../../domain/entities/wealth_stats.dart';
 import 'wealth_formatters.dart';
 
-const _colorGold = Color(0xFFFFD54F);
+const _colorGold = Color(0xFF10B981);
 const _target = 1_000_000.0;
 
 class WealthMillionSection extends StatelessWidget {
@@ -234,7 +234,7 @@ class _GoldBar extends StatelessWidget {
                     height: 6,
                     decoration: const BoxDecoration(
                       gradient: LinearGradient(
-                        colors: [_colorGold, Color(0xFFFFEE58)],
+                        colors: [_colorGold, Color(0xFF34D399)],
                       ),
                     ),
                   ),

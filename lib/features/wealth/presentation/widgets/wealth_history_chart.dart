@@ -7,7 +7,7 @@ import '../../../../core/theme/rpg_colors.dart';
 import '../../domain/entities/wealth_snapshot.dart';
 import 'wealth_formatters.dart';
 
-const _colorGold = Color(0xFFFFD54F);
+const _colorGold = Color(0xFF10B981);
 
 class WealthHistoryChart extends StatefulWidget {
   final List<WealthSnapshot> history;

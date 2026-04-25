@@ -104,31 +104,49 @@ class _JapanesePageState extends State<JapanesePage> {
   }
 
   Widget _buildBody(BuildContext context, JapaneseState state) {
-    // Initial load placeholder
     if (state.statsStatus == LoadStatus.initial ||
         state.sessionsStatus == LoadStatus.initial) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(
+        child: CircularProgressIndicator(
+          color: Color(0xFF4FC3F7),
+          strokeWidth: 1.5,
+        ),
+      );
     }
 
-    // Full-page error only on first load failure
     if (state.statsStatus == LoadStatus.error && state.stats == null) {
       return Center(
         child: Padding(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.all(32),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.error_outline,
-                  size: 48, color: Theme.of(context).colorScheme.error),
-              const SizedBox(height: 12),
-              Text(
-                state.errorMessage ?? 'Something went wrong.',
-                textAlign: TextAlign.center,
+              const Text(
+                'LOAD FAILED',
+                style: TextStyle(
+                  color: RpgColors.textMuted,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 2.0,
+                ),
               ),
-              const SizedBox(height: 16),
-              FilledButton(
+              const SizedBox(height: 8),
+              Text(
+                state.errorMessage ?? 'Unknown error.',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: RpgColors.textSecondary,
+                  fontSize: 13,
+                ),
+              ),
+              const SizedBox(height: 24),
+              OutlinedButton(
                 onPressed: _controller.load,
-                child: const Text('Retry'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFF4FC3F7),
+                  side: const BorderSide(color: RpgColors.border),
+                ),
+                child: const Text('RETRY'),
               ),
             ],
           ),
@@ -137,6 +155,8 @@ class _JapanesePageState extends State<JapanesePage> {
     }
 
     return RefreshIndicator(
+      color: const Color(0xFF4FC3F7),
+      backgroundColor: RpgColors.panelBg,
       onRefresh: _controller.load,
       child: CustomScrollView(
         slivers: [

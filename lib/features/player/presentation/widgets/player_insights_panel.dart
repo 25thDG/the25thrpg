@@ -51,7 +51,7 @@ class PlayerInsightsPanel extends StatelessWidget {
           ),
           const _Divider(),
           _InsightRow(
-            color: const Color(0xFFFFD54F),
+            color: const Color(0xFF10B981),
             label: 'WEALTH',
             sublabel: 'est. time to €1,000,000',
             value: _wealthValue(wealth),
@@ -202,7 +202,7 @@ class _AnimatedValue extends StatelessWidget {
           color: value == '—'
               ? RpgColors.textMuted
               : (value == 'ACHIEVED'
-                  ? const Color(0xFFFFD54F)
+                  ? const Color(0xFF10B981)
                   : RpgColors.textPrimary),
           fontSize: 20,
           fontWeight: FontWeight.w700,

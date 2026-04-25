@@ -4,7 +4,7 @@ import 'package:flutter/services.dart';
 import '../../../../core/theme/rpg_colors.dart';
 import '../../domain/entities/wealth_snapshot.dart';
 
-const _colorGold = Color(0xFFFFD54F);
+const _colorGold = Color(0xFF10B981);
 
 const _months = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -137,7 +137,7 @@ class _WealthMonthlyInputSectionState
             decoration: const BoxDecoration(
               borderRadius: BorderRadius.vertical(top: Radius.circular(4)),
               gradient: LinearGradient(
-                colors: [_colorGold, Color(0xFFFFEE58)],
+                colors: [_colorGold, Color(0xFF34D399)],
               ),
             ),
           ),

@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/rpg_colors.dart';
 import '../../domain/entities/wealth_stats.dart';
 
-const _colorGold = Color(0xFFFFD54F);
+const _colorGold = Color(0xFF10B981);
 
 class WealthRadarSection extends StatelessWidget {
   final WealthStats stats;

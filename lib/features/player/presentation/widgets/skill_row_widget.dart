@@ -27,7 +27,7 @@ class SkillRowWidget extends StatelessWidget {
       case SkillId.japanese:
         return const Color(0xFF4FC3F7);
       case SkillId.wealth:
-        return const Color(0xFFFFD54F);
+        return const Color(0xFF10B981);
       case SkillId.mindfulness:
         return const Color(0xFF26A69A);
     }

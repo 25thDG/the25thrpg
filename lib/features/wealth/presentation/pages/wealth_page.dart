@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../../core/theme/rpg_colors.dart';
 import '../../application/use_cases/add_or_update_monthly_snapshot_use_case.dart';
 import '../../application/use_cases/delete_wealth_snapshot_use_case.dart';
 import '../../application/use_cases/get_wealth_stats_use_case.dart';
@@ -49,8 +50,21 @@ class _WealthPageState extends State<WealthPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: RpgColors.pageBg,
       appBar: AppBar(
-        title: const Text('WEALTH'),
+        backgroundColor: RpgColors.pageBg,
+        foregroundColor: RpgColors.textSecondary,
+        scrolledUnderElevation: 0,
+        elevation: 0,
+        title: const Text(
+          'WEALTH',
+          style: TextStyle(
+            color: RpgColors.textMuted,
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 2.8,
+          ),
+        ),
         centerTitle: false,
         actions: [
           ListenableBuilder(
@@ -60,14 +74,18 @@ class _WealthPageState extends State<WealthPage> {
                 return const Padding(
                   padding: EdgeInsets.only(right: 16),
                   child: SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 1.5,
+                      color: RpgColors.textMuted,
+                    ),
                   ),
                 );
               }
               return IconButton(
-                icon: const Icon(Icons.refresh),
+                icon: const Icon(Icons.refresh, size: 18),
+                color: RpgColors.textMuted,
                 onPressed: _controller.load,
                 tooltip: 'Refresh',
               );
@@ -77,34 +95,54 @@ class _WealthPageState extends State<WealthPage> {
       ),
       body: ListenableBuilder(
         listenable: _controller,
-        builder: (context, _) => _buildBody(context, _controller.state),
+        builder: (context, _) => _buildBody(_controller.state),
       ),
     );
   }
 
-  Widget _buildBody(BuildContext context, WealthState state) {
+  Widget _buildBody(WealthState state) {
     if (state.status == WealthLoadStatus.initial) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(
+        child: CircularProgressIndicator(
+          color: Color(0xFF10B981),
+          strokeWidth: 1.5,
+        ),
+      );
     }
 
     if (state.status == WealthLoadStatus.error && state.stats == null) {
       return Center(
         child: Padding(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.all(32),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.error_outline,
-                  size: 48, color: Theme.of(context).colorScheme.error),
-              const SizedBox(height: 12),
-              Text(
-                state.errorMessage ?? 'Something went wrong.',
-                textAlign: TextAlign.center,
+              const Text(
+                'LOAD FAILED',
+                style: TextStyle(
+                  color: RpgColors.textMuted,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 2.0,
+                ),
               ),
-              const SizedBox(height: 16),
-              FilledButton(
+              const SizedBox(height: 8),
+              Text(
+                state.errorMessage ?? 'Unknown error.',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: RpgColors.textSecondary,
+                  fontSize: 13,
+                ),
+              ),
+              const SizedBox(height: 24),
+              OutlinedButton(
                 onPressed: _controller.load,
-                child: const Text('Retry'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFF10B981),
+                  side: const BorderSide(color: RpgColors.border),
+                ),
+                child: const Text('RETRY'),
               ),
             ],
           ),
@@ -113,32 +151,32 @@ class _WealthPageState extends State<WealthPage> {
     }
 
     return RefreshIndicator(
+      color: const Color(0xFF10B981),
+      backgroundColor: RpgColors.panelBg,
       onRefresh: _controller.load,
       child: CustomScrollView(
         slivers: [
           SliverPadding(
-            padding: const EdgeInsets.only(top: 8, bottom: 32),
+            padding: const EdgeInsets.only(top: 8, bottom: 40),
             sliver: SliverList(
               delegate: SliverChildListDelegate([
                 if (state.stats != null &&
                     state.stats!.currentMonthSnapshot == null)
                   _MissingSnapshotBanner(),
                 if (state.stats != null) ...[
-                  // 1. Current net worth
                   WealthCurrentSection(stats: state.stats!),
-                  // 2. Radar progress
+                  const SizedBox(height: 12),
                   WealthRadarSection(stats: state.stats!),
-                  // 3. History chart
+                  const SizedBox(height: 12),
                   WealthHistoryChart(history: state.stats!.monthlyHistory),
-                  // 4. €1M projection
+                  const SizedBox(height: 12),
                   WealthMillionSection(stats: state.stats!),
-                  // 5. All-time high
+                  const SizedBox(height: 12),
                   WealthHighestSection(stats: state.stats!),
+                  const SizedBox(height: 12),
                 ],
-                // 5. Monthly input
                 WealthMonthlyInputSection(
-                  currentMonthSnapshot:
-                      state.stats?.currentMonthSnapshot,
+                  currentMonthSnapshot: state.stats?.currentMonthSnapshot,
                   isBusy: state.isBusy,
                   onSave: _controller.saveSnapshot,
                   onDelete: _controller.deleteSnapshot,
@@ -159,20 +197,21 @@ class _MissingSnapshotBanner extends StatelessWidget {
       margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFD54F).withValues(alpha: 0.08),
+        color: const Color(0xFF10B981).withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: const Color(0xFFFFD54F).withValues(alpha: 0.35)),
+        border: Border.all(
+            color: const Color(0xFF10B981).withValues(alpha: 0.35)),
       ),
-      child: Row(
+      child: const Row(
         children: [
-          const Icon(Icons.warning_amber_rounded,
-              color: Color(0xFFFFD54F), size: 18),
-          const SizedBox(width: 10),
-          const Expanded(
+          Icon(Icons.warning_amber_rounded,
+              color: Color(0xFF10B981), size: 18),
+          SizedBox(width: 10),
+          Expanded(
             child: Text(
               'No net worth logged this month. Scroll down to add a snapshot.',
               style: TextStyle(
-                color: Color(0xFFFFD54F),
+                color: Color(0xFF10B981),
                 fontSize: 12,
                 fontWeight: FontWeight.w500,
                 letterSpacing: 0.2,
