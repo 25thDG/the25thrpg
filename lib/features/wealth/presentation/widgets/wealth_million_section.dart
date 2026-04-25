@@ -1,10 +1,14 @@
+import 'dart:math' show pi, min;
+
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/rpg_colors.dart';
 import '../../domain/entities/wealth_stats.dart';
 import 'wealth_formatters.dart';
 
-const _colorGold = Color(0xFF10B981);
+const _emerald = Color(0xFF10B981);
+const _emeraldLight = Color(0xFF34D399);
+const _decline = Color(0xFFEF5350);
 const _target = 1_000_000.0;
 
 class WealthMillionSection extends StatelessWidget {
@@ -17,123 +21,214 @@ class WealthMillionSection extends StatelessWidget {
     final current = stats.currentNetWorth;
     if (current == null || !stats.hasData) return const SizedBox.shrink();
 
+    final pct = (current / _target).clamp(0.0, 1.0);
+    final reached = current >= _target;
+    final avgGrowth =
+        stats.monthlyHistory.length >= 2 ? _calcAvgMonthlyGrowth(stats) : 0.0;
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
         color: RpgColors.panelBg,
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(color: RpgColors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: double.infinity,
-            padding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            decoration: const BoxDecoration(
-              border:
-                  Border(bottom: BorderSide(color: RpgColors.divider)),
-            ),
-            child: const Text(
-              '€1M GOAL',
-              style: TextStyle(
-                color: RpgColors.textMuted,
-                fontSize: 10,
-                fontWeight: FontWeight.w600,
-                letterSpacing: 2.4,
-              ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 18, 20, 0),
+            child: Row(
+              children: [
+                Container(width: 6, height: 6, color: _emerald),
+                const SizedBox(width: 8),
+                const Text(
+                  '€1M GOAL',
+                  style: TextStyle(
+                    color: RpgColors.textSecondary,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 2.4,
+                  ),
+                ),
+              ],
             ),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
-            child: _buildContent(current),
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+            child: reached
+                ? _buildReached()
+                : Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      SizedBox(
+                        width: 130,
+                        height: 130,
+                        child: TweenAnimationBuilder<double>(
+                          tween: Tween(begin: 0.0, end: pct),
+                          duration: const Duration(milliseconds: 1400),
+                          curve: Curves.easeOutCubic,
+                          builder: (_, v, _) => CustomPaint(
+                            painter: _RingPainter(progress: v),
+                            child: Center(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    '${(v * 100).toStringAsFixed(v >= 0.1 ? 1 : 2)}%',
+                                    style: const TextStyle(
+                                      color: _emeraldLight,
+                                      fontSize: 24,
+                                      fontWeight: FontWeight.w800,
+                                      letterSpacing: -1.0,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  const Text(
+                                    'OF €1M',
+                                    style: TextStyle(
+                                      color: RpgColors.textMuted,
+                                      fontSize: 9,
+                                      letterSpacing: 1.6,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 20),
+                      Expanded(child: _projectionPanel(current, avgGrowth)),
+                    ],
+                  ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildContent(double current) {
-    if (current >= _target) return _buildReached();
-
-    if (stats.monthlyHistory.length < 2) {
-      return _buildNeedMoreData(current);
-    }
-
-    final avgMonthlyGrowth = _calcAvgMonthlyGrowth();
-    if (avgMonthlyGrowth <= 0) {
-      return _buildNotGrowing(current, avgMonthlyGrowth);
-    }
-
-    final monthsLeft = (_target - current) / avgMonthlyGrowth;
-    final targetDate = _addMonths(DateTime.now(), monthsLeft.ceil());
-    return _buildProjection(current, avgMonthlyGrowth, monthsLeft, targetDate);
-  }
-
   Widget _buildReached() {
-    return const Row(
+    return Row(
       children: [
-        Icon(Icons.emoji_events_rounded, color: _colorGold, size: 22),
-        SizedBox(width: 10),
-        Text(
-          "You've reached €1,000,000!",
-          style: TextStyle(
-            color: _colorGold,
-            fontSize: 15,
-            fontWeight: FontWeight.w700,
+        Container(
+          width: 56,
+          height: 56,
+          decoration: BoxDecoration(
+            color: _emerald.withValues(alpha: 0.15),
+            shape: BoxShape.circle,
+            border: Border.all(color: _emerald, width: 2),
+          ),
+          child: const Icon(Icons.emoji_events_rounded, color: _emerald, size: 30),
+        ),
+        const SizedBox(width: 16),
+        const Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '€1,000,000 reached',
+                style: TextStyle(
+                  color: _emeraldLight,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.4,
+                ),
+              ),
+              SizedBox(height: 2),
+              Text(
+                'Goal achieved.',
+                style: TextStyle(
+                  color: RpgColors.textMuted,
+                  fontSize: 12,
+                ),
+              ),
+            ],
           ),
         ),
       ],
     );
   }
 
-  Widget _buildNeedMoreData(double current) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _GoldBar(progress: current / _target),
-        const SizedBox(height: 10),
-        Text(
-          '${fmtEur(_target - current)} remaining',
-          style: const TextStyle(color: RpgColors.textSecondary, fontSize: 13),
-        ),
-        const SizedBox(height: 4),
-        const Text(
-          'Add more monthly snapshots to see your projected arrival date.',
-          style: TextStyle(color: RpgColors.textMuted, fontSize: 11),
-        ),
-      ],
-    );
-  }
+  Widget _projectionPanel(double current, double avgGrowth) {
+    final remaining = _target - current;
 
-  Widget _buildNotGrowing(double current, double growth) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _GoldBar(progress: current / _target),
-        const SizedBox(height: 10),
-        Text(
-          '${fmtEur(_target - current)} remaining',
-          style: const TextStyle(color: RpgColors.textSecondary, fontSize: 13),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          growth == 0
-              ? 'No growth detected yet — keep adding snapshots!'
-              : 'Net worth is declining (${fmtEurCompact(growth)}/mo avg).',
-          style: const TextStyle(color: Color(0xFFEF5350), fontSize: 11),
-        ),
-      ],
-    );
-  }
+    if (stats.monthlyHistory.length < 2) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'ESTIMATED ARRIVAL',
+            style: TextStyle(
+              color: RpgColors.textMuted,
+              fontSize: 9,
+              letterSpacing: 1.6,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            '—',
+            style: TextStyle(
+              color: RpgColors.textPrimary,
+              fontSize: 22,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            '${fmtEur(remaining)} to go',
+            style: const TextStyle(
+              color: RpgColors.textMuted,
+              fontSize: 11,
+            ),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Add more snapshots for projection.',
+            style: TextStyle(color: RpgColors.textMuted, fontSize: 10),
+          ),
+        ],
+      );
+    }
 
-  Widget _buildProjection(
-    double current,
-    double avgMonthlyGrowth,
-    double monthsLeft,
-    DateTime targetDate,
-  ) {
+    if (avgGrowth <= 0) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'ESTIMATED ARRIVAL',
+            style: TextStyle(
+              color: RpgColors.textMuted,
+              fontSize: 9,
+              letterSpacing: 1.6,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Stalled',
+            style: TextStyle(
+              color: _decline,
+              fontSize: 22,
+              fontWeight: FontWeight.w800,
+              letterSpacing: -0.4,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            avgGrowth == 0
+                ? 'No growth yet — keep logging.'
+                : 'Trending down (${fmtEurCompact(avgGrowth)}/mo).',
+            style: const TextStyle(color: _decline, fontSize: 11),
+          ),
+        ],
+      );
+    }
+
+    final monthsLeft = remaining / avgGrowth;
+    final targetDate = _addMonths(DateTime.now(), monthsLeft.ceil());
     final years = (monthsLeft / 12).floor();
     final months = monthsLeft.ceil() % 12;
     final timeStr = years > 0
@@ -143,43 +238,58 @@ class WealthMillionSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _GoldBar(progress: current / _target),
-        const SizedBox(height: 16),
-        Row(
-          children: [
-            _StatChip(
-              label: 'ESTIMATED',
-              value: fmtMonth(targetDate),
-              highlight: true,
-            ),
-            const SizedBox(width: 16),
-            _StatChip(label: 'TIME LEFT', value: timeStr),
-            const SizedBox(width: 16),
-            _StatChip(
-              label: 'AVG/MONTH',
-              value:
-                  '${avgMonthlyGrowth >= 0 ? '+' : ''}${fmtEurCompact(avgMonthlyGrowth)}',
-            ),
-          ],
+        const Text(
+          'ESTIMATED ARRIVAL',
+          style: TextStyle(
+            color: RpgColors.textMuted,
+            fontSize: 9,
+            letterSpacing: 1.6,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          fmtMonth(targetDate),
+          style: const TextStyle(
+            color: _emeraldLight,
+            fontSize: 22,
+            fontWeight: FontWeight.w800,
+            letterSpacing: -0.6,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          '$timeStr left',
+          style: const TextStyle(
+            color: RpgColors.textPrimary,
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+          ),
         ),
         const SizedBox(height: 10),
-        Text(
-          '${fmtEur(_target - current)} remaining',
-          style: const TextStyle(
-            color: RpgColors.textMuted,
-            fontSize: 11,
-            letterSpacing: 0.2,
-          ),
+        Row(
+          children: [
+            const Icon(Icons.trending_up, color: _emerald, size: 12),
+            const SizedBox(width: 4),
+            Text(
+              '+${fmtEurCompact(avgGrowth)}/mo avg',
+              style: const TextStyle(
+                color: _emerald,
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
         ),
       ],
     );
   }
 
-  double _calcAvgMonthlyGrowth() {
+  double _calcAvgMonthlyGrowth(WealthStats stats) {
     final h = stats.monthlyHistory;
-    final months = (h.last.snapshotMonth.year - h.first.snapshotMonth.year) *
-            12 +
-        (h.last.snapshotMonth.month - h.first.snapshotMonth.month);
+    final months =
+        (h.last.snapshotMonth.year - h.first.snapshotMonth.year) * 12 +
+            (h.last.snapshotMonth.month - h.first.snapshotMonth.month);
     if (months == 0) return h.last.netWorthEur - h.first.netWorthEur;
     return (h.last.netWorthEur - h.first.netWorthEur) / months;
   }
@@ -192,98 +302,56 @@ class WealthMillionSection extends StatelessWidget {
   }
 }
 
-class _GoldBar extends StatelessWidget {
+class _RingPainter extends CustomPainter {
   final double progress;
-  const _GoldBar({required this.progress});
+  const _RingPainter({required this.progress});
 
   @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              '${(progress * 100).toStringAsFixed(1)}%',
-              style: const TextStyle(
-                color: _colorGold,
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            const Text(
-              '€1,000,000',
-              style: TextStyle(color: RpgColors.textMuted, fontSize: 10),
-            ),
-          ],
-        ),
-        const SizedBox(height: 6),
-        TweenAnimationBuilder<double>(
-          tween: Tween(begin: 0.0, end: progress.clamp(0.0, 1.0)),
-          duration: const Duration(milliseconds: 1200),
-          curve: Curves.easeOutCubic,
-          builder: (_, v, _) => ClipRRect(
-            borderRadius: BorderRadius.circular(2),
-            child: Stack(
-              children: [
-                Container(height: 6, color: RpgColors.progressTrack),
-                FractionallySizedBox(
-                  widthFactor: v,
-                  child: Container(
-                    height: 6,
-                    decoration: const BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [_colorGold, Color(0xFF34D399)],
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = min(size.width, size.height) / 2 - 10;
+    const startAngle = -pi / 2;
+    const sweepAngle = 2 * pi;
+
+    canvas.drawCircle(
+      center,
+      radius,
+      Paint()
+        ..color = _emerald.withValues(alpha: 0.08)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 9,
     );
+
+    if (progress > 0) {
+      canvas.drawArc(
+        Rect.fromCircle(center: center, radius: radius),
+        startAngle,
+        sweepAngle * progress,
+        false,
+        Paint()
+          ..color = _emerald.withValues(alpha: 0.25)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 16
+          ..strokeCap = StrokeCap.round
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6),
+      );
+      canvas.drawArc(
+        Rect.fromCircle(center: center, radius: radius),
+        startAngle,
+        sweepAngle * progress,
+        false,
+        Paint()
+          ..shader = const SweepGradient(
+            startAngle: -pi / 2,
+            colors: [_emerald, _emeraldLight, _emerald],
+          ).createShader(Rect.fromCircle(center: center, radius: radius))
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 9
+          ..strokeCap = StrokeCap.round,
+      );
+    }
   }
-}
-
-class _StatChip extends StatelessWidget {
-  final String label;
-  final String value;
-  final bool highlight;
-
-  const _StatChip({
-    required this.label,
-    required this.value,
-    this.highlight = false,
-  });
 
   @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(
-            color: RpgColors.textMuted,
-            fontSize: 8,
-            fontWeight: FontWeight.w600,
-            letterSpacing: 1.4,
-          ),
-        ),
-        const SizedBox(height: 3),
-        Text(
-          value,
-          style: TextStyle(
-            color: highlight ? _colorGold : RpgColors.textPrimary,
-            fontSize: 13,
-            fontWeight: FontWeight.w700,
-            letterSpacing: -0.3,
-          ),
-        ),
-      ],
-    );
-  }
+  bool shouldRepaint(_RingPainter old) => old.progress != progress;
 }

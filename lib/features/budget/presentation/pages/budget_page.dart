@@ -112,8 +112,21 @@ class _BudgetPageState extends State<BudgetPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: RpgColors.pageBg,
       appBar: AppBar(
-        title: const Text('BUDGET'),
+        backgroundColor: RpgColors.pageBg,
+        foregroundColor: RpgColors.textSecondary,
+        scrolledUnderElevation: 0,
+        elevation: 0,
+        title: const Text(
+          'BUDGET',
+          style: TextStyle(
+            color: RpgColors.textMuted,
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 2.8,
+          ),
+        ),
         centerTitle: false,
         actions: [
           ListenableBuilder(
@@ -128,17 +141,22 @@ class _BudgetPageState extends State<BudgetPage> {
                       child: SizedBox(
                         width: 16,
                         height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
+                        child: CircularProgressIndicator(
+                          strokeWidth: 1.5,
+                          color: RpgColors.textMuted,
+                        ),
                       ),
                     ),
                   if (summary != null)
                     IconButton(
-                      icon: const Icon(Icons.category_outlined, size: 20),
+                      icon: const Icon(Icons.category_outlined, size: 18),
+                      color: RpgColors.textMuted,
                       tooltip: 'Manage categories',
                       onPressed: () => _showCategories(context, summary),
                     ),
                   IconButton(
-                    icon: const Icon(Icons.refresh, size: 20),
+                    icon: const Icon(Icons.refresh, size: 18),
+                    color: RpgColors.textMuted,
                     onPressed: _controller.load,
                   ),
                 ],
@@ -173,26 +191,48 @@ class _BudgetPageState extends State<BudgetPage> {
   Widget _buildBody(BuildContext context, BudgetState state) {
     if (state.status == BudgetLoadStatus.initial ||
         (state.status == BudgetLoadStatus.loading && state.summary == null)) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(
+        child: CircularProgressIndicator(
+          color: Color(0xFF4FC3F7),
+          strokeWidth: 1.5,
+        ),
+      );
     }
 
     if (state.status == BudgetLoadStatus.error && state.summary == null) {
       return Center(
         child: Padding(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.all(32),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.error_outline,
-                  size: 48, color: Theme.of(context).colorScheme.error),
-              const SizedBox(height: 12),
-              Text(state.errorMessage ?? 'Something went wrong.',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(color: RpgColors.textSecondary)),
-              const SizedBox(height: 16),
-              FilledButton(
-                  onPressed: _controller.load,
-                  child: const Text('Retry')),
+              const Text(
+                'LOAD FAILED',
+                style: TextStyle(
+                  color: RpgColors.textMuted,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 2.0,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                state.errorMessage ?? 'Unknown error.',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: RpgColors.textSecondary,
+                  fontSize: 13,
+                ),
+              ),
+              const SizedBox(height: 24),
+              OutlinedButton(
+                onPressed: _controller.load,
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFF4FC3F7),
+                  side: const BorderSide(color: RpgColors.border),
+                ),
+                child: const Text('RETRY'),
+              ),
             ],
           ),
         ),
@@ -379,72 +419,75 @@ class _GaugePanel extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
-        color: RpgColors.panelBg,
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(color: RpgColors.border),
+        gradient: RadialGradient(
+          center: const Alignment(1.0, -1.0),
+          radius: 1.4,
+          colors: [
+            Color.lerp(color, const Color(0xFF101015), 0.78)!,
+            const Color(0xFF101015),
+            RpgColors.panelBg,
+          ],
+          stops: const [0.0, 0.55, 1.0],
+        ),
       ),
       child: Column(
         children: [
-          // Colored accent bar
-          Container(
-            height: 3,
-            decoration: BoxDecoration(
-              borderRadius:
-                  const BorderRadius.vertical(top: Radius.circular(4)),
-              gradient: LinearGradient(colors: [
-                color,
-                color.withValues(alpha: 0.3),
-              ]),
-            ),
-          ),
-
-          // Header row
           Padding(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            padding: const EdgeInsets.fromLTRB(20, 18, 20, 0),
             child: Row(
               children: [
+                Container(width: 6, height: 6, color: color),
+                const SizedBox(width: 8),
                 const Text(
                   'MONTHLY BUDGET',
                   style: TextStyle(
-                    color: RpgColors.textMuted,
+                    color: RpgColors.textSecondary,
                     fontSize: 10,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w700,
                     letterSpacing: 2.4,
                   ),
                 ),
                 const Spacer(),
                 if (deltaStr != null)
-                  Row(
-                    children: [
-                      Icon(
-                        delta! <= 0
-                            ? Icons.arrow_downward
-                            : Icons.arrow_upward,
-                        size: 11,
-                        color: deltaColor,
-                      ),
-                      const SizedBox(width: 3),
-                      Text(
-                        '$deltaStr vs last month',
-                        style: TextStyle(
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: deltaColor.withValues(alpha: 0.10),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                          color: deltaColor.withValues(alpha: 0.35)),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          delta! <= 0
+                              ? Icons.arrow_downward
+                              : Icons.arrow_upward,
+                          size: 10,
                           color: deltaColor,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: 0.3,
                         ),
-                      ),
-                    ],
+                        const SizedBox(width: 3),
+                        Text(
+                          '$deltaStr vs last',
+                          style: TextStyle(
+                            color: deltaColor,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.3,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
               ],
             ),
           ),
 
-          Container(height: 0.5, color: RpgColors.divider),
-
-          // Gauge
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 28, 16, 20),
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 18),
             child: BudgetGauge(summary: summary),
           ),
 

@@ -14,7 +14,6 @@ import '../widgets/wealth_highest_section.dart';
 import '../widgets/wealth_history_chart.dart';
 import '../widgets/wealth_million_section.dart';
 import '../widgets/wealth_monthly_input_section.dart';
-import '../widgets/wealth_radar_section.dart';
 
 class WealthPage extends StatefulWidget {
   const WealthPage({super.key});
@@ -165,15 +164,13 @@ class _WealthPageState extends State<WealthPage> {
                   _MissingSnapshotBanner(),
                 if (state.stats != null) ...[
                   WealthCurrentSection(stats: state.stats!),
-                  const SizedBox(height: 12),
-                  WealthRadarSection(stats: state.stats!),
-                  const SizedBox(height: 12),
-                  WealthHistoryChart(history: state.stats!.monthlyHistory),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 14),
                   WealthMillionSection(stats: state.stats!),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 14),
+                  WealthHistoryChart(history: state.stats!.monthlyHistory),
+                  const SizedBox(height: 14),
                   WealthHighestSection(stats: state.stats!),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 14),
                 ],
                 WealthMonthlyInputSection(
                   currentMonthSnapshot: state.stats?.currentMonthSnapshot,

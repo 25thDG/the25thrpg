@@ -14,7 +14,6 @@ import '../state/mindfulness_state.dart';
 import '../widgets/mindfulness_addiction_section.dart';
 import '../widgets/mindfulness_category_section.dart';
 import '../widgets/mindfulness_lifetime_section.dart';
-import '../widgets/mindfulness_rolling_section.dart';
 import '../widgets/mindfulness_today_section.dart';
 
 const _colorTeal = Color(0xFF26A69A);
@@ -171,17 +170,7 @@ class _MindfulnessPageState extends State<MindfulnessPage> {
               delegate: SliverChildListDelegate([
                 if (state.stats != null) ...[
                   MindfulnessLifetimeSection(stats: state.stats!),
-                  const SizedBox(height: 12),
-                  MindfulnessCategorySection(stats: state.stats!),
-                  const SizedBox(height: 12),
-                  MindfulnessRollingSection(stats: state.stats!),
-                  const SizedBox(height: 12),
-                  MindfulnessAddictionSection(
-                    stats: state.stats!,
-                    onLog: _controller.logAddictionDay,
-                    onLogForDate: _controller.logAddictionForDate,
-                  ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 14),
                 ],
                 MindfulnessTodaySection(
                   sessions: state.todaySessions,
@@ -189,6 +178,17 @@ class _MindfulnessPageState extends State<MindfulnessPage> {
                   onUpdate: _controller.updateSession,
                   onDelete: _controller.deleteSession,
                 ),
+                if (state.stats != null) ...[
+                  const SizedBox(height: 14),
+                  MindfulnessCategorySection(stats: state.stats!),
+                  const SizedBox(height: 14),
+                  MindfulnessAddictionSection(
+                    stats: state.stats!,
+                    onLog: _controller.logAddictionDay,
+                    onLogForDate: _controller.logAddictionForDate,
+                  ),
+                  const SizedBox(height: 14),
+                ],
               ]),
             ),
           ),
