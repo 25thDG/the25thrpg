@@ -195,7 +195,7 @@ class _MissingSnapshotBanner extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
         color: const Color(0xFF10B981).withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(
             color: const Color(0xFF10B981).withValues(alpha: 0.35)),
       ),

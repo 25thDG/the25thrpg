@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/rpg_colors.dart';
 import '../../domain/entities/japanese_stats.dart';
 
-const _jp = Color(0xFF4FC3F7);
-const _jpLight = Color(0xFF81D4FA);
+const _jp = Color(0xFFFF7043);
+const _jpLight = Color(0xFFFFAB91);
 
 class LifetimeStatsSection extends StatelessWidget {
   final JapaneseStats stats;
@@ -27,7 +27,7 @@ class LifetimeStatsSection extends StatelessWidget {
           center: Alignment(1.0, -1.0),
           radius: 1.4,
           colors: [
-            Color(0xFF0F2A38),
+            Color(0xFF2A1208),
             Color(0xFF101015),
             RpgColors.panelBg,
           ],
@@ -77,13 +77,13 @@ class LifetimeStatsSection extends StatelessWidget {
                   Text(
                     _formatHours(v),
                     style: const TextStyle(
-                      color: Color(0xFFE0F7FA),
+                      color: Color(0xFFFFEDE8),
                       fontSize: 48,
                       fontWeight: FontWeight.w800,
                       height: 1.0,
                       letterSpacing: -2.2,
                       shadows: [
-                        Shadow(color: Color(0x664FC3F7), blurRadius: 22),
+                        Shadow(color: Color(0x66FF7043), blurRadius: 22),
                       ],
                     ),
                   ),

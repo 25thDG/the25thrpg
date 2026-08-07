@@ -16,7 +16,7 @@ import '../widgets/mindfulness_category_section.dart';
 import '../widgets/mindfulness_lifetime_section.dart';
 import '../widgets/mindfulness_today_section.dart';
 
-const _colorTeal = Color(0xFF26A69A);
+const _colorPurple = Color(0xFFAB47BC);
 
 class MindfulnessPage extends StatefulWidget {
   const MindfulnessPage({super.key});
@@ -111,7 +111,7 @@ class _MindfulnessPageState extends State<MindfulnessPage> {
         state.sessionsStatus == MindfulnessLoadStatus.initial) {
       return const Center(
         child: CircularProgressIndicator(
-          color: _colorTeal,
+          color: _colorPurple,
           strokeWidth: 1.5,
         ),
       );
@@ -147,7 +147,7 @@ class _MindfulnessPageState extends State<MindfulnessPage> {
               OutlinedButton(
                 onPressed: _controller.load,
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: _colorTeal,
+                  foregroundColor: _colorPurple,
                   side: const BorderSide(color: RpgColors.border),
                 ),
                 child: const Text('RETRY'),
@@ -159,7 +159,7 @@ class _MindfulnessPageState extends State<MindfulnessPage> {
     }
 
     return RefreshIndicator(
-      color: _colorTeal,
+      color: _colorPurple,
       backgroundColor: RpgColors.panelBg,
       onRefresh: _controller.load,
       child: CustomScrollView(

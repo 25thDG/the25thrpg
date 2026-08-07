@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/rpg_colors.dart';
 import '../../domain/entities/mindfulness_stats.dart';
 
-const _teal = Color(0xFF26A69A);
-const _tealLight = Color(0xFF80CBC4);
+const _purple = Color(0xFFAB47BC);
+const _purpleLight = Color(0xFFCE93D8);
 
 class MindfulnessLifetimeSection extends StatelessWidget {
   final MindfulnessStats stats;
@@ -22,7 +22,7 @@ class MindfulnessLifetimeSection extends StatelessWidget {
           center: Alignment(-1.0, -1.0),
           radius: 1.4,
           colors: [
-            Color(0xFF132A28),
+            Color(0xFF1F1228),
             Color(0xFF101015),
             RpgColors.panelBg,
           ],
@@ -36,7 +36,7 @@ class MindfulnessLifetimeSection extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(20, 18, 20, 0),
             child: Row(
               children: [
-                Container(width: 6, height: 6, color: _teal),
+                Container(width: 6, height: 6, color: _purple),
                 const SizedBox(width: 8),
                 const Text(
                   'PRACTICE',
@@ -62,13 +62,13 @@ class MindfulnessLifetimeSection extends StatelessWidget {
                   Text(
                     _formatHours(v),
                     style: const TextStyle(
-                      color: Color(0xFFE6FFFA),
+                      color: Color(0xFFF3E5F5),
                       fontSize: 48,
                       fontWeight: FontWeight.w800,
                       height: 1.0,
                       letterSpacing: -2.2,
                       shadows: [
-                        Shadow(color: Color(0x6626A69A), blurRadius: 22),
+                        Shadow(color: Color(0x66AB47BC), blurRadius: 22),
                       ],
                     ),
                   ),
@@ -109,7 +109,7 @@ class MindfulnessLifetimeSection extends StatelessWidget {
                   child: _RollingStat(
                     label: 'LAST 30 DAYS',
                     value: stats.last30DaysMinutes,
-                    color: _teal,
+                    color: _purple,
                   ),
                 ),
                 Container(width: 1, color: RpgColors.divider),
@@ -117,7 +117,7 @@ class MindfulnessLifetimeSection extends StatelessWidget {
                   child: _RollingStat(
                     label: 'BEST 30-DAY',
                     value: stats.best30DayMinutes,
-                    color: _tealLight,
+                    color: _purpleLight,
                     bold: true,
                   ),
                 ),

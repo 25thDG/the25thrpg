@@ -4,10 +4,10 @@ import '../../../../core/theme/rpg_colors.dart';
 import '../../domain/entities/mindfulness_session.dart';
 import '../../domain/entities/mindfulness_stats.dart';
 
-const _colorTeal = Color(0xFF26A69A);
+const _colorPurple = Color(0xFFAB47BC);
 
 const _categoryColors = {
-  MindfulnessCategory.meditation: Color(0xFF26A69A),
+  MindfulnessCategory.meditation: Color(0xFFAB47BC),
   MindfulnessCategory.journaling: Color(0xFFFFA726),
   MindfulnessCategory.walking: Color(0xFF66BB6A),
   MindfulnessCategory.nonfiction: Color(0xFF7986CB),
@@ -30,7 +30,7 @@ class MindfulnessCategorySection extends StatelessWidget {
       margin: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
         color: RpgColors.panelBg,
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(color: RpgColors.border),
       ),
       child: Column(
@@ -41,7 +41,7 @@ class MindfulnessCategorySection extends StatelessWidget {
             decoration: const BoxDecoration(
               borderRadius: BorderRadius.vertical(top: Radius.circular(4)),
               gradient: LinearGradient(
-                colors: [_colorTeal, Color(0xFF4DB6AC)],
+                colors: [_colorPurple, Color(0xFFCE93D8)],
               ),
             ),
           ),
@@ -86,7 +86,7 @@ class _CategoryRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = _categoryColors[stats.category] ?? _colorTeal;
+    final color = _categoryColors[stats.category] ?? _colorPurple;
     final pct = (stats.percentage / 100).clamp(0.0, 1.0);
 
     return Column(

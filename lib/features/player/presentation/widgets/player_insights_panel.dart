@@ -29,7 +29,7 @@ class PlayerInsightsPanel extends StatelessWidget {
       margin: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
         color: RpgColors.panelBg,
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(color: RpgColors.border),
       ),
       child: Column(

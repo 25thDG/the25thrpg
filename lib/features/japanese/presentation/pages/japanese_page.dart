@@ -108,7 +108,7 @@ class _JapanesePageState extends State<JapanesePage> {
         state.sessionsStatus == LoadStatus.initial) {
       return const Center(
         child: CircularProgressIndicator(
-          color: Color(0xFF4FC3F7),
+          color: Color(0xFFFF7043),
           strokeWidth: 1.5,
         ),
       );
@@ -143,7 +143,7 @@ class _JapanesePageState extends State<JapanesePage> {
               OutlinedButton(
                 onPressed: _controller.load,
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: const Color(0xFF4FC3F7),
+                  foregroundColor: const Color(0xFFFF7043),
                   side: const BorderSide(color: RpgColors.border),
                 ),
                 child: const Text('RETRY'),
@@ -155,7 +155,7 @@ class _JapanesePageState extends State<JapanesePage> {
     }
 
     return RefreshIndicator(
-      color: const Color(0xFF4FC3F7),
+      color: const Color(0xFFFF7043),
       backgroundColor: RpgColors.panelBg,
       onRefresh: _controller.load,
       child: CustomScrollView(
@@ -166,9 +166,9 @@ class _JapanesePageState extends State<JapanesePage> {
               delegate: SliverChildListDelegate([
                 if (state.stats != null) ...[
                   LifetimeStatsSection(stats: state.stats!),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 14),
                   CategoryBreakdownSection(stats: state.stats!),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 14),
                 ],
                 TodaySessionsSection(
                   sessions: state.todaySessions,

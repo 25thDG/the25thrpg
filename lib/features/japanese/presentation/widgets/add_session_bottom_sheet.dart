@@ -1,15 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../../../core/theme/rpg_colors.dart';
 import '../../domain/entities/japanese_session.dart';
 
+const _jp = Color(0xFFFF7043);
+
+const _categoryColors = {
+  SessionCategory.vocab: Color(0xFF7986CB),
+  SessionCategory.reading: Color(0xFFFF7043),
+  SessionCategory.active: Color(0xFF66BB6A),
+  SessionCategory.passive: Color(0xFF26A69A),
+  SessionCategory.accent: Color(0xFFFFA726),
+};
+
 class AddSessionBottomSheet extends StatefulWidget {
-  /// If non-null, this is an edit — pre-fills the form.
   final JapaneseSession? existing;
 
   const AddSessionBottomSheet({super.key, this.existing});
 
-  /// Returns `(category, minutes)` or null if cancelled.
   static Future<(SessionCategory, int)?> show(
     BuildContext context, {
     JapaneseSession? existing,
@@ -18,9 +27,7 @@ class AddSessionBottomSheet extends StatefulWidget {
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
+      backgroundColor: Colors.transparent,
       builder: (_) => AddSessionBottomSheet(existing: existing),
     );
   }
@@ -57,10 +64,14 @@ class _AddSessionBottomSheetState extends State<AddSessionBottomSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final isEdit = widget.existing != null;
 
-    return Padding(
+    return Container(
+      decoration: const BoxDecoration(
+        color: RpgColors.panelBg,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+        border: Border(top: BorderSide(color: RpgColors.border)),
+      ),
       padding: EdgeInsets.fromLTRB(
         20,
         20,
@@ -73,66 +84,134 @@ class _AddSessionBottomSheetState extends State<AddSessionBottomSheet> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              isEdit ? 'Edit Session' : 'Log Session',
-              style: theme.textTheme.titleLarge
-                  ?.copyWith(fontWeight: FontWeight.w700),
+            Center(
+              child: Container(
+                width: 36,
+                height: 3,
+                decoration: BoxDecoration(
+                  color: RpgColors.border,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 18),
+            Row(
+              children: [
+                Container(width: 6, height: 6, color: _jp),
+                const SizedBox(width: 8),
+                Text(
+                  isEdit ? 'EDIT SESSION' : 'LOG SESSION',
+                  style: const TextStyle(
+                    color: RpgColors.textSecondary,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 2.4,
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 20),
 
-            // Category picker
-            Text(
+            const Text(
               'CATEGORY',
-              style: theme.textTheme.labelSmall?.copyWith(
-                letterSpacing: 1.1,
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+              style: TextStyle(
+                color: RpgColors.textMuted,
+                fontSize: 9,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 1.8,
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
             Wrap(
               spacing: 8,
               runSpacing: 8,
               children: SessionCategory.values.map((c) {
                 final selected = c == _category;
-                return ChoiceChip(
-                  label: Text(c.displayName),
-                  selected: selected,
-                  onSelected: (_) => setState(() => _category = c),
-                  selectedColor: theme.colorScheme.primaryContainer,
-                  labelStyle: TextStyle(
-                    color: selected
-                        ? theme.colorScheme.onPrimaryContainer
-                        : theme.colorScheme.onSurface,
-                    fontWeight:
-                        selected ? FontWeight.w600 : FontWeight.normal,
+                final color = _categoryColors[c] ?? _jp;
+                return GestureDetector(
+                  onTap: () => setState(() => _category = c),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 150),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: selected
+                          ? color.withValues(alpha: 0.15)
+                          : RpgColors.panelBgAlt,
+                      borderRadius: BorderRadius.circular(4),
+                      border: Border.all(
+                        color: selected
+                            ? color.withValues(alpha: 0.6)
+                            : RpgColors.border,
+                        width: selected ? 1.5 : 1,
+                      ),
+                    ),
+                    child: Text(
+                      c.displayName.toUpperCase(),
+                      style: TextStyle(
+                        color: selected ? color : RpgColors.textMuted,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 1.2,
+                      ),
+                    ),
                   ),
                 );
               }).toList(),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 22),
 
-            // Minutes input
-            Text(
-              'MINUTES',
-              style: theme.textTheme.labelSmall?.copyWith(
-                letterSpacing: 1.1,
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+            const Text(
+              'DURATION',
+              style: TextStyle(
+                color: RpgColors.textMuted,
+                fontSize: 9,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 1.8,
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
             TextFormField(
               controller: _minutesController,
               autofocus: true,
               keyboardType: TextInputType.number,
               inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              style: const TextStyle(
+                color: RpgColors.textPrimary,
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+              ),
               decoration: InputDecoration(
-                hintText: 'e.g. 45',
+                hintText: '0',
+                hintStyle:
+                    const TextStyle(color: RpgColors.textMuted, fontSize: 18),
                 suffixText: 'min',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
+                suffixStyle: const TextStyle(
+                  color: RpgColors.textMuted,
+                  fontSize: 13,
+                  letterSpacing: 0.4,
                 ),
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                filled: true,
+                fillColor: RpgColors.panelBgAlt,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(4),
+                  borderSide: const BorderSide(color: RpgColors.border),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(4),
+                  borderSide: const BorderSide(color: RpgColors.border),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(4),
+                  borderSide: const BorderSide(color: _jp, width: 1.5),
+                ),
+                errorBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(4),
+                  borderSide:
+                      const BorderSide(color: Color(0xFFEF5350)),
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 14, vertical: 12),
               ),
               validator: (v) {
                 final n = int.tryParse(v?.trim() ?? '');
@@ -140,20 +219,29 @@ class _AddSessionBottomSheetState extends State<AddSessionBottomSheet> {
                 return null;
               },
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 22),
 
-            // Save button
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton(
-                onPressed: _submit,
-                style: FilledButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
+            GestureDetector(
+              onTap: _submit,
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                decoration: BoxDecoration(
+                  color: _jp.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(4),
+                  border:
+                      Border.all(color: _jp.withValues(alpha: 0.4)),
+                ),
+                child: Text(
+                  isEdit ? 'SAVE CHANGES' : 'LOG SESSION',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: _jp,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 1.6,
                   ),
                 ),
-                child: Text(isEdit ? 'Save Changes' : 'Log'),
               ),
             ),
           ],

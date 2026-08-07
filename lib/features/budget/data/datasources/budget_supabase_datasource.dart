@@ -111,6 +111,28 @@ class BudgetSupabaseDatasource {
     }
   }
 
+  Future<List<BudgetTransactionModel>> getTransactionsInRange({
+    required DateTime start,
+    required DateTime end,
+  }) async {
+    try {
+      final rows = await _client
+          .from('budget_transactions')
+          .select()
+          .eq('user_id', _userId)
+          .isFilter('deleted_at', null)
+          .gte('spent_at', start.toUtc().toIso8601String())
+          .lt('spent_at', end.toUtc().toIso8601String())
+          .order('spent_at', ascending: true);
+
+      return (rows as List)
+          .map((r) => BudgetTransactionModel.fromMap(r))
+          .toList();
+    } catch (e) {
+      throw NetworkException('Failed to fetch transactions: $e');
+    }
+  }
+
   Future<BudgetTransactionModel> addTransaction({
     required String categoryId,
     required int amountCents,

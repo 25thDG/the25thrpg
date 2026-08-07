@@ -25,6 +25,11 @@ abstract class BudgetRepository {
 
   Future<List<BudgetTransaction>> getTransactionsForMonth(DateTime month);
 
+  Future<List<BudgetTransaction>> getTransactionsInRange({
+    required DateTime start,
+    required DateTime end,
+  });
+
   Future<BudgetTransaction> addTransaction({
     required String categoryId,
     required int amountCents,

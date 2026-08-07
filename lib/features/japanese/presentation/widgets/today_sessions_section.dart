@@ -4,7 +4,7 @@ import '../../../../core/theme/rpg_colors.dart';
 import '../../domain/entities/japanese_session.dart';
 import 'add_session_bottom_sheet.dart';
 
-const _colorJp = Color(0xFF4FC3F7);
+const _colorJp = Color(0xFFFF7043);
 
 const _weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const _months = [
@@ -15,7 +15,7 @@ const _months = [
 const _categoryColors = {
   SessionCategory.vocab: Color(0xFF5C6BC0),
   SessionCategory.reading: Color(0xFF26A69A),
-  SessionCategory.active: Color(0xFF4FC3F7),
+  SessionCategory.active: Color(0xFFFF7043),
   SessionCategory.passive: Color(0xFFAB47BC),
   SessionCategory.accent: Color(0xFFEC407A),
 };
@@ -54,7 +54,7 @@ class TodaySessionsSection extends StatelessWidget {
       margin: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
         color: RpgColors.panelBg,
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(color: RpgColors.border),
       ),
       child: Column(
@@ -66,7 +66,7 @@ class TodaySessionsSection extends StatelessWidget {
             decoration: const BoxDecoration(
               borderRadius: BorderRadius.vertical(top: Radius.circular(4)),
               gradient:
-                  LinearGradient(colors: [_colorJp, Color(0xFF81D4FA)]),
+                  LinearGradient(colors: [_colorJp, Color(0xFFFF8A65)]),
             ),
           ),
           // Header

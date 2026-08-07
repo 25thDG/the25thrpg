@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../../core/theme/rpg_colors.dart';
 import '../../application/use_cases/add_sport_session_use_case.dart';
 import '../../application/use_cases/delete_sport_session_use_case.dart';
 import '../../application/use_cases/get_sport_stats_use_case.dart';
@@ -10,12 +11,11 @@ import '../../data/datasources/sport_supabase_datasource.dart';
 import '../../data/repositories/sport_repository_impl.dart';
 import '../controllers/sport_controller.dart';
 import '../state/sport_state.dart';
-import '../widgets/sport_add_session_sheet.dart';
-import '../widgets/sport_best_section.dart';
 import '../widgets/sport_category_section.dart';
-import '../widgets/sport_last30_section.dart';
 import '../widgets/sport_lifetime_section.dart';
 import '../widgets/sport_today_section.dart';
+
+const _colorSport = Color(0xFFFF7043);
 
 class SportPage extends StatefulWidget {
   const SportPage({super.key});
@@ -50,22 +50,24 @@ class _SportPageState extends State<SportPage> {
     super.dispose();
   }
 
-  void _openAddSheet(BuildContext context, SportState state) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      builder: (_) => SportAddSessionSheet(
-        isBusy: state.isBusy,
-        onSave: _controller.addSession,
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: RpgColors.pageBg,
       appBar: AppBar(
-        title: const Text('SPORT'),
+        backgroundColor: RpgColors.pageBg,
+        foregroundColor: RpgColors.textSecondary,
+        scrolledUnderElevation: 0,
+        elevation: 0,
+        title: const Text(
+          'SPORT',
+          style: TextStyle(
+            color: RpgColors.textMuted,
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 2.8,
+          ),
+        ),
         centerTitle: false,
         actions: [
           ListenableBuilder(
@@ -75,15 +77,18 @@ class _SportPageState extends State<SportPage> {
                 return const Padding(
                   padding: EdgeInsets.only(right: 16),
                   child: SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 1.5,
+                      color: RpgColors.textMuted,
+                    ),
                   ),
                 );
               }
-
               return IconButton(
-                icon: const Icon(Icons.refresh),
+                icon: const Icon(Icons.refresh, size: 18),
+                color: RpgColors.textMuted,
                 onPressed: _controller.load,
                 tooltip: 'Refresh',
               );
@@ -99,31 +104,49 @@ class _SportPageState extends State<SportPage> {
   }
 
   Widget _buildBody(BuildContext context, SportState state) {
-    if (state.statsStatus == SportLoadStatus.initial) {
-      return const Center(child: CircularProgressIndicator());
+    if (state.statsStatus == SportLoadStatus.initial ||
+        state.statsStatus == SportLoadStatus.loading && state.stats == null) {
+      return const Center(
+        child: CircularProgressIndicator(
+          color: _colorSport,
+          strokeWidth: 1.5,
+        ),
+      );
     }
 
     if (state.statsStatus == SportLoadStatus.error && state.stats == null) {
       return Center(
         child: Padding(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.all(32),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(
-                Icons.error_outline,
-                size: 48,
-                color: Theme.of(context).colorScheme.error,
+              const Text(
+                'LOAD FAILED',
+                style: TextStyle(
+                  color: RpgColors.textMuted,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 2.0,
+                ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 8),
               Text(
-                state.errorMessage ?? 'Something went wrong.',
+                state.errorMessage ?? 'Unknown error.',
                 textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: RpgColors.textSecondary,
+                  fontSize: 13,
+                ),
               ),
-              const SizedBox(height: 16),
-              FilledButton(
+              const SizedBox(height: 24),
+              OutlinedButton(
                 onPressed: _controller.load,
-                child: const Text('Retry'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: _colorSport,
+                  side: const BorderSide(color: RpgColors.border),
+                ),
+                child: const Text('RETRY'),
               ),
             ],
           ),
@@ -132,6 +155,8 @@ class _SportPageState extends State<SportPage> {
     }
 
     return RefreshIndicator(
+      color: _colorSport,
+      backgroundColor: RpgColors.panelBg,
       onRefresh: _controller.load,
       child: CustomScrollView(
         slivers: [
@@ -141,16 +166,15 @@ class _SportPageState extends State<SportPage> {
               delegate: SliverChildListDelegate([
                 if (state.stats != null) ...[
                   SportLifetimeSection(stats: state.stats!),
+                  const SizedBox(height: 14),
                   SportCategorySection(stats: state.stats!),
-                  SportLast30Section(stats: state.stats!),
-                  SportBestSection(stats: state.stats!),
+                  const SizedBox(height: 14),
                 ],
                 SportTodaySection(
                   sessions: state.todaySessions,
-                  isBusy: state.isBusy,
+                  onAdd: _controller.addSession,
                   onUpdate: _controller.updateSession,
                   onDelete: _controller.deleteSession,
-                  onAdd: () => _openAddSheet(context, state),
                 ),
               ]),
             ),

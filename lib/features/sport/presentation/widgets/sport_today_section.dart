@@ -1,44 +1,34 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
+import '../../../../core/theme/rpg_colors.dart';
 import '../../domain/entities/sport_session.dart';
-import 'section_card.dart';
+import 'sport_add_session_sheet.dart';
+
+const _colorSport = Color(0xFFFF7043);
 
 const _weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const _months = [
-  'Jan',
-  'Feb',
-  'Mar',
-  'Apr',
-  'May',
-  'Jun',
-  'Jul',
-  'Aug',
-  'Sep',
-  'Oct',
-  'Nov',
-  'Dec',
+  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
 ];
 
 String _formatToday() {
-  final now = DateTime.now();
-  return '${_weekdays[now.weekday - 1]}, ${_months[now.month - 1]} ${now.day}';
+  final d = DateTime.now();
+  return '${_weekdays[d.weekday - 1]}, ${_months[d.month - 1]} ${d.day}';
 }
 
 class SportTodaySection extends StatefulWidget {
   final List<SportSession> sessions;
-  final bool isBusy;
+  final Future<String?> Function(SportCategory category, int minutes) onAdd;
   final Future<String?> Function(String id, int minutes) onUpdate;
   final Future<String?> Function(String id) onDelete;
-  final VoidCallback onAdd;
 
   const SportTodaySection({
     super.key,
     required this.sessions,
-    required this.isBusy,
+    required this.onAdd,
     required this.onUpdate,
     required this.onDelete,
-    required this.onAdd,
   });
 
   @override
@@ -46,176 +36,262 @@ class SportTodaySection extends StatefulWidget {
 }
 
 class _SportTodaySectionState extends State<SportTodaySection> {
-  String? _editingId;
-  final _editController = TextEditingController();
-
-  @override
-  void dispose() {
-    _editController.dispose();
-    super.dispose();
+  Future<void> _handleAdd() async {
+    final result = await SportAddSessionSheet.show(context);
+    if (result == null || !context.mounted) return;
+    final (category, minutes) = result;
+    final error = await widget.onAdd(category, minutes);
+    if (error != null && context.mounted) _showError(error);
   }
 
-  Future<void> _saveEdit(SportSession session) async {
-    final minutes = int.tryParse(_editController.text.trim());
-    if (minutes == null || minutes <= 0) {
-      setState(() => _editingId = null);
-      return;
-    }
-
-    setState(() => _editingId = null);
+  Future<void> _handleEdit(SportSession session) async {
+    final result =
+        await SportAddSessionSheet.show(context, existing: session);
+    if (result == null || !context.mounted) return;
+    final (_, minutes) = result;
     final error = await widget.onUpdate(session.id, minutes);
-    if (error != null && mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(error)));
-    }
+    if (error != null && context.mounted) _showError(error);
   }
 
-  Future<void> _confirmDelete(SportSession session) async {
-    final ok = await showDialog<bool>(
+  Future<void> _handleDelete(SportSession session) async {
+    final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Remove session?'),
+        backgroundColor: RpgColors.panelBg,
+        title: const Text('Delete session?',
+            style: TextStyle(color: RpgColors.textPrimary)),
         content: Text(
           'Remove ${session.minutes} min of ${session.category.displayName}?',
+          style: const TextStyle(color: RpgColors.textSecondary),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
+            child: const Text('Cancel',
+                style: TextStyle(color: RpgColors.textMuted)),
           ),
-          FilledButton(
+          TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Remove'),
+            child: const Text('Delete',
+                style: TextStyle(color: Color(0xFFEF5350))),
           ),
         ],
       ),
     );
-
-    if (ok != true || !mounted) return;
-
+    if (confirmed != true || !context.mounted) return;
     final error = await widget.onDelete(session.id);
-    if (error != null && mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(error)));
-    }
+    if (error != null && context.mounted) _showError(error);
+  }
+
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+          content: Text(message),
+          backgroundColor: const Color(0xFFEF5350)),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final totalMinutes =
+        widget.sessions.fold<int>(0, (sum, s) => sum + s.minutes);
 
-    return SectionCard(
-      title: _formatToday(),
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: BoxDecoration(
+        color: RpgColors.panelBg,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: RpgColors.border),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (widget.sessions.isEmpty)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: Text(
-                'No sessions logged today.',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.45),
-                ),
-              ),
-            )
-          else
-            ...widget.sessions.map((session) {
-              final isEditing = _editingId == session.id;
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: isEditing
-                          ? TextFormField(
-                              controller: _editController,
-                              autofocus: true,
-                              keyboardType: TextInputType.number,
-                              inputFormatters: [
-                                FilteringTextInputFormatter.digitsOnly,
-                              ],
-                              decoration: InputDecoration(
-                                labelText: 'Minutes',
-                                isDense: true,
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                              ),
-                              onFieldSubmitted: (_) => _saveEdit(session),
-                            )
-                          : Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  session.category.displayName,
-                                  style: theme.textTheme.bodySmall?.copyWith(
-                                    color: theme.colorScheme.onSurface
-                                        .withValues(alpha: 0.55),
-                                  ),
-                                ),
-                                Text(
-                                  '${session.minutes} min',
-                                  style: theme.textTheme.bodyMedium,
-                                ),
-                              ],
-                            ),
-                    ),
-                    if (isEditing) ...[
-                      IconButton(
-                        icon: const Icon(Icons.check, size: 18),
-                        onPressed: () => _saveEdit(session),
-                        tooltip: 'Save',
-                        visualDensity: VisualDensity.compact,
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.close, size: 18),
-                        onPressed: () => setState(() => _editingId = null),
-                        tooltip: 'Cancel',
-                        visualDensity: VisualDensity.compact,
-                      ),
-                    ] else ...[
-                      IconButton(
-                        icon: const Icon(Icons.edit_outlined, size: 18),
-                        onPressed: widget.isBusy
-                            ? null
-                            : () {
-                                _editController.text = '${session.minutes}';
-                                setState(() => _editingId = session.id);
-                              },
-                        tooltip: 'Edit',
-                        visualDensity: VisualDensity.compact,
-                      ),
-                      IconButton(
-                        icon: Icon(
-                          Icons.delete_outline,
-                          size: 18,
-                          color: theme.colorScheme.error,
-                        ),
-                        onPressed: widget.isBusy
-                            ? null
-                            : () => _confirmDelete(session),
-                        tooltip: 'Remove',
-                        visualDensity: VisualDensity.compact,
-                      ),
-                    ],
-                  ],
-                ),
-              );
-            }),
-          const SizedBox(height: 4),
-          FilledButton.icon(
-            onPressed: widget.isBusy ? null : widget.onAdd,
-            icon: const Icon(Icons.add, size: 16),
-            label: const Text('Log session'),
-            style: FilledButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
+          Container(
+            height: 3,
+            decoration: const BoxDecoration(
+              borderRadius: BorderRadius.vertical(top: Radius.circular(8)),
+              gradient: LinearGradient(
+                  colors: [_colorSport, Color(0xFFFF8A65)]),
             ),
+          ),
+          Container(
+            width: double.infinity,
+            padding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            decoration: const BoxDecoration(
+              border:
+                  Border(bottom: BorderSide(color: RpgColors.divider)),
+            ),
+            child: Row(
+              children: [
+                const Text(
+                  'TODAY',
+                  style: TextStyle(
+                    color: RpgColors.textMuted,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 2.4,
+                  ),
+                ),
+                const Spacer(),
+                Text(
+                  _formatToday(),
+                  style: const TextStyle(
+                    color: RpgColors.textMuted,
+                    fontSize: 10,
+                    letterSpacing: 0.4,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (totalMinutes > 0)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.check_circle_outline,
+                            color: _colorSport, size: 14),
+                        const SizedBox(width: 6),
+                        Text(
+                          '$totalMinutes min logged today',
+                          style: const TextStyle(
+                            color: _colorSport,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                GestureDetector(
+                  onTap: _handleAdd,
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 11),
+                    decoration: BoxDecoration(
+                      color: _colorSport.withValues(alpha: 0.10),
+                      borderRadius: BorderRadius.circular(4),
+                      border: Border.all(
+                          color: _colorSport.withValues(alpha: 0.4)),
+                    ),
+                    child: const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.add, color: _colorSport, size: 15),
+                        SizedBox(width: 6),
+                        Text(
+                          'LOG SESSION',
+                          style: TextStyle(
+                            color: _colorSport,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 1.4,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                if (widget.sessions.isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  const Text(
+                    'SESSIONS',
+                    style: TextStyle(
+                      color: RpgColors.textMuted,
+                      fontSize: 9,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 1.8,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  ...widget.sessions.map(
+                    (s) => _SessionTile(
+                      session: s,
+                      onEdit: () => _handleEdit(s),
+                      onDelete: () => _handleDelete(s),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SessionTile extends StatelessWidget {
+  final SportSession session;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
+
+  const _SessionTile({
+    required this.session,
+    required this.onEdit,
+    required this.onDelete,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: RpgColors.panelBgAlt,
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: RpgColors.border),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 3,
+            height: 30,
+            decoration: BoxDecoration(
+              color: _colorSport,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  session.category.displayName,
+                  style: const TextStyle(
+                    color: RpgColors.textPrimary,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                Text(
+                  '${session.minutes} min',
+                  style: const TextStyle(
+                    color: RpgColors.textMuted,
+                    fontSize: 11,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.edit_outlined, size: 16),
+            color: RpgColors.textMuted,
+            onPressed: onEdit,
+            visualDensity: VisualDensity.compact,
+          ),
+          IconButton(
+            icon: const Icon(Icons.delete_outline, size: 16),
+            color: const Color(0xFFEF5350),
+            onPressed: onDelete,
+            visualDensity: VisualDensity.compact,
           ),
         ],
       ),

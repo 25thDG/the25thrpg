@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/rpg_colors.dart';
 import '../../domain/entities/mindfulness_stats.dart';
 
-const _cleanColor = Color(0xFF26A69A);
+const _cleanColor = Color(0xFFAB47BC);
 const _relapseColor = Color(0xFFEF5350);
 const _milestones = [7, 14, 30, 60, 90, 180, 365];
 
@@ -81,7 +81,7 @@ class _MindfulnessAddictionSectionState
       margin: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
         color: RpgColors.panelBg,
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(color: RpgColors.border),
       ),
       child: Column(

@@ -7,7 +7,7 @@ import '../../domain/entities/japanese_stats.dart';
 const _categoryColors = {
   SessionCategory.vocab: Color(0xFF5C6BC0),
   SessionCategory.reading: Color(0xFF26A69A),
-  SessionCategory.active: Color(0xFF4FC3F7),
+  SessionCategory.active: Color(0xFFFF7043),
   SessionCategory.passive: Color(0xFFAB47BC),
   SessionCategory.accent: Color(0xFFEC407A),
 };
@@ -30,7 +30,7 @@ class CategoryBreakdownSection extends StatelessWidget {
       margin: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
         color: RpgColors.panelBg,
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(color: RpgColors.border),
       ),
       child: Column(
@@ -59,7 +59,7 @@ class CategoryBreakdownSection extends StatelessWidget {
             child: Column(
               children: rows.map((data) {
                 final color = _categoryColors[data.category] ??
-                    const Color(0xFF4FC3F7);
+                    const Color(0xFFFF7043);
                 final pct = (data.percentage / 100).clamp(0.0, 1.0);
                 final isLast = data == rows.last;
                 return Padding(

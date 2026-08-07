@@ -39,6 +39,13 @@ class BudgetRepositoryImpl implements BudgetRepository {
       _datasource.getTransactionsForMonth(month);
 
   @override
+  Future<List<BudgetTransaction>> getTransactionsInRange({
+    required DateTime start,
+    required DateTime end,
+  }) =>
+      _datasource.getTransactionsInRange(start: start, end: end);
+
+  @override
   Future<BudgetTransaction> addTransaction({
     required String categoryId,
     required int amountCents,

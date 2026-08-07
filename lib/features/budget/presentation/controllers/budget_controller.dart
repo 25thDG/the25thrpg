@@ -4,6 +4,7 @@ import '../../application/use_cases/add_category_use_case.dart';
 import '../../application/use_cases/add_transaction_use_case.dart';
 import '../../application/use_cases/delete_category_use_case.dart';
 import '../../application/use_cases/delete_transaction_use_case.dart';
+import '../../application/use_cases/export_transactions_use_case.dart';
 import '../../application/use_cases/get_budget_summary_use_case.dart';
 import '../../application/use_cases/update_category_use_case.dart';
 import '../../application/use_cases/update_transaction_use_case.dart';
@@ -17,6 +18,7 @@ class BudgetController extends ChangeNotifier {
   final AddCategoryUseCase _addCategory;
   final UpdateCategoryUseCase _updateCategory;
   final DeleteCategoryUseCase _deleteCategory;
+  final ExportTransactionsUseCase _exportTransactions;
 
   BudgetState _state = BudgetState.initial();
   BudgetState get state => _state;
@@ -29,13 +31,15 @@ class BudgetController extends ChangeNotifier {
     required AddCategoryUseCase addCategory,
     required UpdateCategoryUseCase updateCategory,
     required DeleteCategoryUseCase deleteCategory,
+    required ExportTransactionsUseCase exportTransactions,
   })  : _getSummary = getSummary,
         _addTransaction = addTransaction,
         _updateTransaction = updateTransaction,
         _deleteTransaction = deleteTransaction,
         _addCategory = addCategory,
         _updateCategory = updateCategory,
-        _deleteCategory = deleteCategory;
+        _deleteCategory = deleteCategory,
+        _exportTransactions = exportTransactions;
 
   void _emit(BudgetState next) {
     _state = next;
@@ -169,4 +173,12 @@ class BudgetController extends ChangeNotifier {
       return e.toString();
     }
   }
+
+  // ── Export ─────────────────────────────────────────────────────────────────
+
+  Future<ExportBundle> buildExportBundle({
+    required DateTime start,
+    required DateTime end,
+  }) =>
+      _exportTransactions.execute(start: start, end: end);
 }

@@ -7,6 +7,7 @@ import 'features/budget/presentation/pages/budget_page.dart';
 import 'features/japanese/presentation/pages/japanese_page.dart';
 import 'features/mindfulness/presentation/pages/mindfulness_page.dart';
 import 'features/player/presentation/pages/player_page.dart';
+import 'features/quests/presentation/pages/quests_page.dart';
 import 'features/wealth/presentation/pages/wealth_page.dart';
 
 Future<void> main() async {
@@ -50,6 +51,7 @@ class _ShellState extends State<_Shell> {
     MindfulnessPage(),
     WealthPage(),
     BudgetPage(),
+    QuestsPage(),
   ];
 
   static const _tabs = <_TabDef>[
@@ -58,6 +60,7 @@ class _ShellState extends State<_Shell> {
     _TabDef(icon: Icons.self_improvement_outlined, activeIcon: Icons.self_improvement, label: 'Mind'),
     _TabDef(icon: Icons.account_balance_outlined, activeIcon: Icons.account_balance, label: 'Wealth'),
     _TabDef(icon: Icons.wallet_outlined, activeIcon: Icons.wallet, label: 'Budget'),
+    _TabDef(icon: Icons.map_outlined, activeIcon: Icons.map, label: 'Quests'),
   ];
 
   @override

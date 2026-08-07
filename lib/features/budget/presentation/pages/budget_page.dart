@@ -1,3 +1,6 @@
+import 'dart:io';
+
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -6,6 +9,7 @@ import '../../application/use_cases/add_category_use_case.dart';
 import '../../application/use_cases/add_transaction_use_case.dart';
 import '../../application/use_cases/delete_category_use_case.dart';
 import '../../application/use_cases/delete_transaction_use_case.dart';
+import '../../application/use_cases/export_transactions_use_case.dart';
 import '../../application/use_cases/get_budget_summary_use_case.dart';
 import '../../application/use_cases/update_category_use_case.dart';
 import '../../application/use_cases/update_transaction_use_case.dart';
@@ -44,6 +48,7 @@ class _BudgetPageState extends State<BudgetPage> {
       addCategory: AddCategoryUseCase(repo),
       updateCategory: UpdateCategoryUseCase(repo),
       deleteCategory: DeleteCategoryUseCase(repo),
+      exportTransactions: ExportTransactionsUseCase(repo),
     );
     _controller.load();
   }
@@ -84,6 +89,128 @@ class _BudgetPageState extends State<BudgetPage> {
         ),
       ),
     );
+  }
+
+  Future<void> _exportToExcel(BuildContext context) async {
+    final now = DateTime.now();
+    final initialStart = DateTime(now.year, now.month, 1);
+    final initialEnd = now;
+
+    final range = await showDateRangePicker(
+      context: context,
+      firstDate: DateTime(2020, 1, 1),
+      lastDate: DateTime(now.year + 1, 12, 31),
+      initialDateRange: DateTimeRange(start: initialStart, end: initialEnd),
+      helpText: 'Pick export range',
+      saveText: 'EXPORT',
+      builder: (ctx, child) => Theme(
+        data: Theme.of(ctx).copyWith(
+          colorScheme: const ColorScheme.dark(
+            primary: Color(0xFF4FC3F7),
+            onPrimary: Colors.black,
+            surface: RpgColors.panelBg,
+            onSurface: RpgColors.textPrimary,
+          ),
+        ),
+        child: child!,
+      ),
+    );
+
+    if (range == null || !context.mounted) return;
+
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.showSnackBar(
+      const SnackBar(
+        duration: Duration(seconds: 30),
+        backgroundColor: Color(0xFF1A1A20),
+        content: Row(
+          children: [
+            SizedBox(
+              width: 14,
+              height: 14,
+              child: CircularProgressIndicator(
+                strokeWidth: 1.5,
+                color: Color(0xFF4FC3F7),
+              ),
+            ),
+            SizedBox(width: 12),
+            Text('Generating Excel…',
+                style: TextStyle(color: RpgColors.textPrimary)),
+          ],
+        ),
+      ),
+    );
+
+    try {
+      final bundle = await _controller.buildExportBundle(
+        start: range.start,
+        end: range.end,
+      );
+
+      final isMobile = Platform.isAndroid || Platform.isIOS;
+      final savedPath = await FilePicker.platform.saveFile(
+        dialogTitle: 'Save expense report',
+        fileName: bundle.suggestedFileName,
+        type: FileType.custom,
+        allowedExtensions: const ['xlsx'],
+        bytes: isMobile ? bundle.bytes : null,
+      );
+
+      messenger.hideCurrentSnackBar();
+
+      if (savedPath == null) {
+        messenger.showSnackBar(
+          const SnackBar(
+            backgroundColor: Color(0xFF1A1A20),
+            content: Text(
+              'Export canceled.',
+              style: TextStyle(color: RpgColors.textSecondary),
+            ),
+          ),
+        );
+        return;
+      }
+
+      if (!isMobile) {
+        await File(savedPath).writeAsBytes(bundle.bytes, flush: true);
+      }
+
+      messenger.showSnackBar(
+        SnackBar(
+          duration: const Duration(seconds: 8),
+          backgroundColor: const Color(0xFF1A1A20),
+          content: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                '${bundle.transactionCount} transactions · €${bundle.totalEur.toStringAsFixed(2)}',
+                style: const TextStyle(
+                  color: Color(0xFF4FC3F7),
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                savedPath,
+                style: const TextStyle(
+                  color: RpgColors.textSecondary,
+                  fontSize: 11,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    } catch (e) {
+      messenger.hideCurrentSnackBar();
+      messenger.showSnackBar(
+        SnackBar(
+          backgroundColor: const Color(0xFFEF5350),
+          content: Text('Export failed: $e'),
+        ),
+      );
+    }
   }
 
   void _showCategories(BuildContext context, BudgetSummary summary) {
@@ -147,6 +274,12 @@ class _BudgetPageState extends State<BudgetPage> {
                         ),
                       ),
                     ),
+                  IconButton(
+                    icon: const Icon(Icons.file_download_outlined, size: 18),
+                    color: RpgColors.textMuted,
+                    tooltip: 'Export to Excel',
+                    onPressed: () => _exportToExcel(context),
+                  ),
                   if (summary != null)
                     IconButton(
                       icon: const Icon(Icons.category_outlined, size: 18),
@@ -268,19 +401,19 @@ class _BudgetPageState extends State<BudgetPage> {
                   // ── Gauge ───────────────────────────────────────────
                   _GaugePanel(
                       summary: summary, month: state.selectedMonth),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 14),
 
                   // ── Burn rate chart ─────────────────────────────────
                   if (summary.hasTransactions) ...[
                     BudgetBurnChart(
                         summary: summary, month: state.selectedMonth),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 14),
                   ],
 
                   // ── Category chart ──────────────────────────────────
                   if (summary.hasTransactions) ...[
                     BudgetCategoryChart(summary: summary),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 14),
                   ],
 
                   // ── Transaction list ────────────────────────────────
@@ -614,7 +747,7 @@ class _EmptyCategories extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 48, horizontal: 24),
       decoration: BoxDecoration(
         color: RpgColors.panelBg,
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(color: RpgColors.border),
       ),
       child: Column(

@@ -160,13 +160,13 @@ class _PlayerPageState extends State<PlayerPage> {
             sliver: SliverList(
               delegate: SliverChildListDelegate([
                 const TodayCheckInStrip(),
-                const SizedBox(height: 12),
+                const SizedBox(height: 14),
                 PlayerLevelPanel(stats: stats),
-                const SizedBox(height: 12),
+                const SizedBox(height: 14),
                 PlayerInsightsPanel(stats: stats),
-                const SizedBox(height: 12),
+                const SizedBox(height: 14),
                 SkillRadarChart(skills: stats.skills),
-                const SizedBox(height: 12),
+                const SizedBox(height: 14),
                 SkillsWindow(skills: stats.skills),
               ]),
             ),

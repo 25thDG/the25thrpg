@@ -38,90 +38,110 @@ class BudgetBurnChart extends StatelessWidget {
       margin: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
         color: RpgColors.panelBg,
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(color: RpgColors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ── Header ──────────────────────────────────────────────────────
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            decoration: const BoxDecoration(
-              border: Border(bottom: BorderSide(color: RpgColors.divider)),
-            ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
             child: Row(
               children: [
+                Container(width: 6, height: 6, color: accentColor),
+                const SizedBox(width: 8),
                 const Text(
                   'BURN RATE',
                   style: TextStyle(
-                    color: RpgColors.textMuted,
+                    color: RpgColors.textSecondary,
                     fontSize: 10,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w700,
                     letterSpacing: 2.4,
                   ),
                 ),
                 const Spacer(),
-                if (isCurrentMonth) ...[
+                if (isCurrentMonth)
                   Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 8, vertical: 3),
+                        horizontal: 10, vertical: 5),
                     decoration: BoxDecoration(
-                      color: accentColor.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(3),
+                      color: accentColor.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(20),
                       border: Border.all(
                           color: accentColor.withValues(alpha: 0.4)),
                     ),
-                    child: Text(
-                      isProjectedOver
-                          ? 'OVERSPEND  €${(projectedEur - _budget).toStringAsFixed(0)}'
-                          : '€${(_budget - projectedEur).toStringAsFixed(0)} TO SPARE',
-                      style: TextStyle(
-                        color: accentColor,
-                        fontSize: 9,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 1.2,
-                      ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          isProjectedOver
+                              ? Icons.arrow_upward
+                              : Icons.arrow_downward,
+                          size: 10,
+                          color: accentColor,
+                        ),
+                        const SizedBox(width: 3),
+                        Text(
+                          isProjectedOver
+                              ? '+€${(projectedEur - _budget).toStringAsFixed(0)} over'
+                              : '€${(_budget - projectedEur).toStringAsFixed(0)} to spare',
+                          style: TextStyle(
+                            color: accentColor,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.3,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ],
               ],
             ),
           ),
 
-          // ── Projection summary row ────────────────────────────────────
-          if (isCurrentMonth)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+          // Stats row
+          if (isCurrentMonth) ...[
+            Container(height: 1, color: RpgColors.divider),
+            IntrinsicHeight(
               child: Row(
                 children: [
-                  _StatChip(
-                    label: 'DAILY RATE',
-                    value: '€${data.dailyRate.toStringAsFixed(2)}',
-                    color: accentColor,
+                  Expanded(
+                    child: _StatCell(
+                      label: 'SPENT SO FAR',
+                      value:
+                          '€${data.actualSpots.last.y.toStringAsFixed(0)}',
+                      color: accentColor,
+                    ),
                   ),
-                  const SizedBox(width: 12),
-                  _StatChip(
-                    label: 'PROJECTED EOMonth',
-                    value: '€${projectedEur.toStringAsFixed(2)}',
-                    color: accentColor,
+                  Container(width: 1, color: RpgColors.divider),
+                  Expanded(
+                    child: _StatCell(
+                      label: 'PROJECTED END',
+                      value: '€${projectedEur.toStringAsFixed(0)}',
+                      color: isProjectedOver ? _over : accentColor,
+                    ),
                   ),
-                  const SizedBox(width: 12),
-                  _StatChip(
-                    label: 'DAYS LEFT',
-                    value: '${data.daysRemaining}d',
-                    color: RpgColors.textSecondary,
+                  Container(width: 1, color: RpgColors.divider),
+                  Expanded(
+                    child: _StatCell(
+                      label: 'DAILY RATE',
+                      value:
+                          '€${data.dailyRate.toStringAsFixed(2)}',
+                      color: RpgColors.textPrimary,
+                    ),
                   ),
                 ],
               ),
             ),
+          ],
 
-          // ── Chart ─────────────────────────────────────────────────────
+          Container(height: 1, color: RpgColors.divider),
+
+          // Chart
           Padding(
-            padding: const EdgeInsets.fromLTRB(8, 16, 16, 12),
+            padding: const EdgeInsets.fromLTRB(4, 16, 12, 12),
             child: SizedBox(
-              height: 180,
+              height: 170,
               child: LineChart(
                 _buildChart(data, accentColor),
                 duration: const Duration(milliseconds: 800),
@@ -135,12 +155,14 @@ class BudgetBurnChart extends StatelessWidget {
 
   LineChartData _buildChart(_ChartData data, Color accentColor) {
     final daysInMonth = data.daysInMonth.toDouble();
+    final projColor =
+        data.projectedEnd >= _budget ? _over : accentColor;
 
     return LineChartData(
       minX: 0,
       maxX: daysInMonth,
       minY: 0,
-      maxY: (data.chartMax * 1.1).ceilToDouble(),
+      maxY: (data.chartMax * 1.15).ceilToDouble(),
       clipData: const FlClipData.all(),
       gridData: FlGridData(
         show: true,
@@ -157,7 +179,7 @@ class BudgetBurnChart extends StatelessWidget {
         leftTitles: AxisTitles(
           sideTitles: SideTitles(
             showTitles: true,
-            reservedSize: 38,
+            reservedSize: 40,
             interval: 100,
             getTitlesWidget: (v, _) => Text(
               '€${v.toInt()}',
@@ -195,14 +217,14 @@ class BudgetBurnChart extends StatelessWidget {
           getTooltipColor: (_) => RpgColors.panelBgAlt,
           tooltipBorder: const BorderSide(color: RpgColors.border),
           getTooltipItems: (spots) => spots.map((s) {
-            if (s.barIndex == 2) return null; // hide cap line tooltip
+            if (s.barIndex == 2) return null;
             final label = s.barIndex == 1 ? 'Projected' : 'Spent';
+            final color =
+                s.barIndex == 1 ? projColor : accentColor;
             return LineTooltipItem(
               '$label  €${s.y.toStringAsFixed(2)}',
               TextStyle(
-                color: s.barIndex == 1
-                    ? accentColor.withValues(alpha: 0.6)
-                    : accentColor,
+                color: color,
                 fontSize: 11,
                 fontWeight: FontWeight.w600,
               ),
@@ -235,30 +257,50 @@ class BudgetBurnChart extends StatelessWidget {
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
               colors: [
-                accentColor.withValues(alpha: 0.18),
+                accentColor.withValues(alpha: 0.20),
                 accentColor.withValues(alpha: 0.0),
               ],
             ),
           ),
         ),
 
-        // 2. Projection line (dashed, lighter)
+        // 2. Projection line — prominent dashed, with endpoint dot
         if (data.projectionSpots.isNotEmpty)
           LineChartBarData(
             spots: data.projectionSpots,
             isCurved: false,
-            color: accentColor.withValues(alpha: 0.4),
-            barWidth: 1.5,
-            dashArray: [6, 4],
-            dotData: const FlDotData(show: false),
-            belowBarData: BarAreaData(show: false),
+            color: projColor.withValues(alpha: 0.7),
+            barWidth: 2.0,
+            dashArray: [8, 5],
+            dotData: FlDotData(
+              show: true,
+              checkToShowDot: (spot, _) =>
+                  spot.x == data.projectionSpots.last.x,
+              getDotPainter: (_, _, _, _) => FlDotCirclePainter(
+                radius: 5,
+                color: projColor,
+                strokeWidth: 2,
+                strokeColor: RpgColors.panelBg,
+              ),
+            ),
+            belowBarData: BarAreaData(
+              show: true,
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  projColor.withValues(alpha: 0.08),
+                  projColor.withValues(alpha: 0.0),
+                ],
+              ),
+            ),
           ),
 
-        // 3. Budget cap line (dashed red)
+        // 3. Budget cap line
         LineChartBarData(
           spots: [FlSpot(0, _budget), FlSpot(daysInMonth, _budget)],
           isCurved: false,
-          color: _over.withValues(alpha: 0.5),
+          color: _over.withValues(alpha: 0.45),
           barWidth: 1,
           dashArray: [4, 4],
           dotData: const FlDotData(show: false),
@@ -278,14 +320,12 @@ class BudgetBurnChart extends StatelessWidget {
         DateUtils.getDaysInMonth(month.year, month.month);
     final daysElapsed = isCurrentMonth ? now.day : daysInMonth;
 
-    // Group spend by day-of-month
     final Map<int, double> dailyMap = {};
     for (final tx in summary.transactions) {
       final day = tx.spentAt.day;
       dailyMap[day] = (dailyMap[day] ?? 0) + tx.amountEur;
     }
 
-    // Build cumulative actual spots
     final actualSpots = <FlSpot>[const FlSpot(0, 0)];
     double cumulative = 0;
     for (int day = 1; day <= daysElapsed; day++) {
@@ -293,7 +333,6 @@ class BudgetBurnChart extends StatelessWidget {
       actualSpots.add(FlSpot(day.toDouble(), cumulative));
     }
 
-    // Projection
     final dailyRate = daysElapsed > 0 ? cumulative / daysElapsed : 0.0;
     final projectedEnd = dailyRate * daysInMonth;
     final daysRemaining = daysInMonth - daysElapsed;
@@ -304,8 +343,8 @@ class BudgetBurnChart extends StatelessWidget {
       projectionSpots.add(FlSpot(daysInMonth.toDouble(), projectedEnd));
     }
 
-    final chartMax = [cumulative, projectedEnd, _budget].reduce(
-        (a, b) => a > b ? a : b);
+    final chartMax = [cumulative, projectedEnd, _budget]
+        .reduce((a, b) => a > b ? a : b);
 
     return _ChartData(
       actualSpots: actualSpots,
@@ -345,12 +384,12 @@ class _ChartData {
   });
 }
 
-class _StatChip extends StatelessWidget {
+class _StatCell extends StatelessWidget {
   final String label;
   final String value;
   final Color color;
 
-  const _StatChip({
+  const _StatCell({
     required this.label,
     required this.value,
     required this.color,
@@ -358,29 +397,33 @@ class _StatChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(
-            color: RpgColors.textMuted,
-            fontSize: 7,
-            fontWeight: FontWeight.w600,
-            letterSpacing: 1.2,
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              color: RpgColors.textMuted,
+              fontSize: 8,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 1.4,
+            ),
           ),
-        ),
-        const SizedBox(height: 2),
-        Text(
-          value,
-          style: TextStyle(
-            color: color,
-            fontSize: 13,
-            fontWeight: FontWeight.w700,
-            letterSpacing: -0.3,
+          const SizedBox(height: 5),
+          Text(
+            value,
+            style: TextStyle(
+              color: color,
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
+              letterSpacing: -0.5,
+              height: 1.0,
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
