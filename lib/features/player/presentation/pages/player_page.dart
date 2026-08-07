@@ -180,9 +180,10 @@ class _PlayerPageState extends State<PlayerPage> {
                 PlayerHero(stats: stats),
                 PlayerStatLine(stats: stats),
                 // Everything below supports the figure above.
-                const TodayCheckInStrip(),
                 PlayerInsightsPanel(stats: stats),
                 SkillsWindow(skills: stats.skills),
+                // Quick-access dock lives last.
+                const TodayCheckInStrip(),
               ]),
             ),
           ),

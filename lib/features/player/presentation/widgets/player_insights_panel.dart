@@ -2,18 +2,17 @@ import 'package:flutter/material.dart';
 
 import '../../domain/entities/player_stats.dart';
 import '../../domain/entities/skill_summary.dart';
-import 'player_row.dart';
+import 'insight_charts.dart';
+import 'insight_detail_sheets.dart';
+import 'player_card.dart';
 import 'player_section.dart';
 import 'rpg_colors.dart';
 
-const _colorJp = Color(0xFF4FC3F7);
-const _colorLevel = Color(0xFFFFA726);
-const _colorWealth = Color(0xFF10B981);
-const _colorSober = Color(0xFF66BB6A);
-const _colorBad = Color(0xFFEF5350);
-
-/// Panel showing recent-pace and balance insights that react to the last few
-/// days, rather than lifetime averages that only ever shrink.
+/// Insight cards, all driven by recent activity rather than lifetime averages
+/// that only ever shrink.
+///
+/// Every card is a door: the face carries the one number worth glancing at, and
+/// a tap opens the full breakdown in a detail sheet.
 class PlayerInsightsPanel extends StatelessWidget {
   final PlayerStats stats;
 
@@ -35,214 +34,321 @@ class PlayerInsightsPanel extends StatelessWidget {
 
     return PlayerSection(
       title: 'INSIGHTS',
+      trailing: 'TAP FOR DETAIL',
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: Column(
+          children: [
+            JapaneseInsightCard(skill: jp),
+            SobrietyInsightCard(skill: mind),
+            IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(child: _NextLevelCard(skill: jp)),
+                  const SizedBox(width: 10),
+                  Expanded(child: _WealthCard(skill: wealth)),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Japanese: 7-day bars + trend ──────────────────────────────────────────────
+
+/// Shows the week itself, not a sentence about it: one bar per day, today
+/// highlighted, with the 7-day average and its move against the 30-day pace.
+class JapaneseInsightCard extends StatelessWidget {
+  final SkillSummary? skill;
+
+  const JapaneseInsightCard({super.key, required this.skill});
+
+  @override
+  Widget build(BuildContext context) {
+    final s = skill;
+    final days = s?.dailyMinutesLast7 ?? const <int>[];
+    final delta = s?.paceDeltaPerDay ?? 0;
+    final flat = delta.abs() < 0.5;
+    final hasPace = s != null && s.hasPaceData;
+
+    return PlayerCard(
+      accent: InsightColors.jp,
+      onTap: s == null ? null : () => showJapaneseInsight(context, s),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _japanesePaceRow(jp),
-          const PlayerRowDivider(),
-          _nextLevelRow(jp),
-          const PlayerRowDivider(),
-          _sobrietyRow(mind),
-          const PlayerRowDivider(),
-          _insightRow(
-            color: _colorWealth,
-            label: 'WEALTH',
-            sublabel: 'est. time to €1,000,000',
-            value: _wealthValue(wealth),
-            valueColor: wealth != null &&
-                    wealth.currentNetWorthEur >= 1_000_000
-                ? _colorWealth
-                : null,
+          Row(
+            children: [
+              const CardLabel('JAPANESE · LAST 7 DAYS', color: InsightColors.jp),
+              const Spacer(),
+              if (hasPace && !flat)
+                TrendPill(up: delta > 0, amount: fmtPerDay(delta.abs())),
+              const SizedBox(width: 4),
+              const TapHint(color: InsightColors.jp),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                hasPace ? fmtPerDay(s.avg7PerDay) : '—',
+                style: TextStyle(
+                  color:
+                      hasPace ? RpgColors.textPrimary : RpgColors.textMuted,
+                  fontSize: 30,
+                  fontWeight: FontWeight.w800,
+                  height: 1.0,
+                  letterSpacing: -1.0,
+                ),
+              ),
+              const SizedBox(width: 6),
+              const Padding(
+                padding: EdgeInsets.only(bottom: 3),
+                child: Text(
+                  'avg / day',
+                  style: TextStyle(color: RpgColors.textMuted, fontSize: 10),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          WeekBars(days: days, color: InsightColors.jp),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Sobriety: flame + 14-day strip ────────────────────────────────────────────
+
+/// The streak as a flame, plus the last fortnight as a row of pips so a wobble
+/// is visible instead of hidden inside an average.
+class SobrietyInsightCard extends StatelessWidget {
+  final SkillSummary? skill;
+
+  const SobrietyInsightCard({super.key, required this.skill});
+
+  @override
+  Widget build(BuildContext context) {
+    final s = skill;
+    final logged = s?.loggedCleanDays ?? 0;
+    final streak = s?.cleanStreak ?? 0;
+    final stale = s?.isCleanLogStale ?? false;
+    final live = logged > 0 && !stale;
+    final lit = live && streak > 0;
+    final color = lit ? InsightColors.sober : InsightColors.bad;
+
+    return PlayerCard(
+      accent: live ? color : null,
+      onTap: s == null ? null : () => showSobrietyInsight(context, s),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              CardLabel(
+                'SOBRIETY',
+                color: live ? color : RpgColors.textMuted,
+              ),
+              const Spacer(),
+              if (logged > 0)
+                Text(
+                  '${(s!.cleanRate * 100).round()}% CLEAN · BEST ${s.longestCleanStreak}d',
+                  style: const TextStyle(
+                    color: RpgColors.textMuted,
+                    fontSize: 8,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.8,
+                  ),
+                ),
+              const SizedBox(width: 4),
+              TapHint(color: live ? color : RpgColors.textSecondary),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Icon(
+                lit ? Icons.local_fire_department : Icons.mode_night_outlined,
+                size: 30,
+                color: color.withValues(alpha: live ? 1.0 : 0.5),
+                shadows: lit
+                    ? [
+                        Shadow(
+                          color: color.withValues(alpha: 0.7),
+                          blurRadius: 14,
+                        ),
+                      ]
+                    : null,
+              ),
+              const SizedBox(width: 10),
+              Text(
+                logged == 0 || stale ? '—' : '$streak',
+                style: TextStyle(
+                  color: live ? RpgColors.textPrimary : RpgColors.textMuted,
+                  fontSize: 30,
+                  fontWeight: FontWeight.w800,
+                  height: 1.0,
+                  letterSpacing: -1.0,
+                ),
+              ),
+              const SizedBox(width: 6),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 3),
+                child: Text(
+                  logged == 0
+                      ? 'nothing logged'
+                      : (stale
+                          ? 'unlogged ${s!.daysSinceLastCleanLog}d'
+                          : 'day streak'),
+                  style: const TextStyle(
+                    color: RpgColors.textMuted,
+                    fontSize: 10,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          if (logged > 0) ...[
+            const SizedBox(height: 14),
+            DayPips(days: s!.last14CleanDays),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+// ── Compact cards ─────────────────────────────────────────────────────────────
+
+class _NextLevelCard extends StatelessWidget {
+  final SkillSummary? skill;
+
+  const _NextLevelCard({required this.skill});
+
+  @override
+  Widget build(BuildContext context) {
+    final s = skill;
+    final days = s?.daysToNextLevel;
+    final maxed = s != null && s.minutesToNextLevel == null;
+
+    return PlayerCard(
+      accent: InsightColors.level,
+      margin: EdgeInsets.zero,
+      onTap: s == null ? null : () => showNextLevelInsight(context, s),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const CardLabel('NEXT LEVEL', color: InsightColors.level),
+              const Spacer(),
+              const TapHint(color: InsightColors.level),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            maxed ? 'MAX' : (days == null ? '—' : fmtEta(days)),
+            style: TextStyle(
+              color: days == null && !maxed
+                  ? RpgColors.textMuted
+                  : InsightColors.level,
+              fontSize: 26,
+              fontWeight: FontWeight.w800,
+              height: 1.0,
+              letterSpacing: -0.8,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            s == null
+                ? 'japanese'
+                : (maxed
+                    ? 'chasing mastery'
+                    : 'JP Lv ${s.nextLevel} · ${s.remainingToNextLevel} to go'),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: RpgColors.textMuted,
+              fontSize: 9,
+              height: 1.4,
+            ),
           ),
         ],
       ),
     );
   }
-
-  // ── Japanese: last 7d vs last 30d ──────────────────────────────────────────
-
-  Widget _japanesePaceRow(SkillSummary? jp) {
-    if (jp == null || !jp.hasPaceData) {
-      return _insightRow(
-        color: _colorJp,
-        label: 'JAPANESE',
-        sublabel: 'no sessions in the last 30 days',
-        value: '—',
-      );
-    }
-
-    final delta = jp.paceDeltaPerDay;
-    // Below half a minute a day either way is noise, not a trend.
-    final flat = delta.abs() < 0.5;
-
-    return _insightRow(
-      color: _colorJp,
-      label: 'JAPANESE',
-      sublabel: flat
-          ? 'last 7d avg · steady vs 30d'
-          : 'last 7d avg · vs ${_fmtAvg(jp.avg30PerDay)} over 30d',
-      value: _fmtAvg(jp.avg7PerDay),
-      trend: flat ? null : _Trend(up: delta > 0, amount: _fmtAvg(delta.abs())),
-    );
-  }
-
-  // ── Japanese: ETA to the next level ────────────────────────────────────────
-
-  Widget _nextLevelRow(SkillSummary? jp) {
-    if (jp == null) {
-      return _insightRow(
-        color: _colorLevel,
-        label: 'NEXT LEVEL',
-        sublabel: 'japanese',
-        value: '—',
-      );
-    }
-
-    final remaining = jp.minutesToNextLevel;
-    if (remaining == null) {
-      return _insightRow(
-        color: _colorLevel,
-        label: 'NEXT LEVEL',
-        sublabel: 'japanese · maxed, chasing mastery',
-        value: 'MAX',
-        valueColor: _colorLevel,
-      );
-    }
-
-    final togo = '${jp.remainingToNextLevel} to go';
-    final days = jp.daysToNextLevel;
-
-    // No recent pace — show the distance, but no date we can't back up.
-    if (days == null) {
-      return _insightRow(
-        color: _colorLevel,
-        label: 'NEXT LEVEL',
-        sublabel: 'japanese Lv ${jp.nextLevel} · $togo · no recent pace',
-        value: '—',
-      );
-    }
-
-    return _insightRow(
-      color: _colorLevel,
-      label: 'NEXT LEVEL',
-      sublabel: 'japanese Lv ${jp.nextLevel} · $togo at 30d pace',
-      value: _fmtDays(days),
-      valueColor: _colorLevel,
-    );
-  }
-
-  /// Compact ETA — days up to a month, then weeks, then months.
-  static String _fmtDays(int days) {
-    if (days <= 1) return 'TODAY';
-    if (days <= 30) return '${days}d';
-    if (days <= 90) return '${(days / 7).round()}w';
-    if (days < 365) return '${(days / 30).round()}mo';
-    return '${(days / 365).toStringAsFixed(1)}y';
-  }
-
-  // ── Mindfulness: sobriety streak ───────────────────────────────────────────
-
-  Widget _sobrietyRow(SkillSummary? mind) {
-    if (mind == null || mind.loggedCleanDays == 0) {
-      return _insightRow(
-        color: _colorSober,
-        label: 'SOBRIETY',
-        sublabel: 'no days logged yet',
-        value: '—',
-      );
-    }
-
-    final streak = mind.cleanStreak;
-    final ratePct = (mind.cleanRate * 100).round();
-    final history = '${mind.cleanDays}/${mind.loggedCleanDays} days clean '
-        '($ratePct%) · best ${mind.longestCleanStreak}d';
-
-    // Logging lapsed — a zero streak here means "unknown", not "relapsed".
-    if (mind.isCleanLogStale) {
-      return _insightRow(
-        color: RpgColors.textMuted,
-        label: 'SOBRIETY',
-        sublabel: 'not logged for ${mind.daysSinceLastCleanLog}d · $history',
-        value: '—',
-      );
-    }
-
-    return _insightRow(
-      color: streak > 0 ? _colorSober : _colorBad,
-      label: 'SOBRIETY',
-      sublabel: streak > 0 ? history : 'streak reset · $history',
-      value: streak > 0 ? '$streak DAYS' : 'DAY 0',
-      valueColor: streak > 0 ? _colorSober : _colorBad,
-    );
-  }
-
-  // ── Wealth ─────────────────────────────────────────────────────────────────
-
-  String _wealthValue(SkillSummary? wealth) {
-    if (wealth == null) return '—';
-    if (wealth.currentNetWorthEur >= 1_000_000) return 'ACHIEVED';
-    return wealth.projectedTimeToMillion ?? '—';
-  }
-
-  static String _fmtAvg(double minPerDay) {
-    if (minPerDay <= 0) return '0m';
-    if (minPerDay < 60) return '${minPerDay.round()}m';
-    final h = (minPerDay / 60).floor();
-    final m = (minPerDay % 60).round();
-    if (m == 0) return '${h}h';
-    return '${h}h ${m}m';
-  }
 }
 
-/// Maps an insight onto the shared row shape.
-Widget _insightRow({
-  required Color color,
-  required String label,
-  required String sublabel,
-  required String value,
-  Color? valueColor,
-  _Trend? trend,
-}) =>
-    PlayerRow(
-      dotColor: color,
-      title: label,
-      subtitle: sublabel,
-      value: value,
-      valueColor: valueColor,
-      badge: trend == null ? null : _TrendBadge(trend: trend),
-    );
+class _WealthCard extends StatelessWidget {
+  final SkillSummary? skill;
 
-/// A rise or fall against the longer-run baseline.
-class _Trend {
-  final bool up;
-  final String amount;
-
-  const _Trend({required this.up, required this.amount});
-}
-
-/// A rise or fall shown as a small badge under the value.
-class _TrendBadge extends StatelessWidget {
-  final _Trend trend;
-
-  const _TrendBadge({required this.trend});
+  const _WealthCard({required this.skill});
 
   @override
   Widget build(BuildContext context) {
-    final color = trend.up ? _colorSober : _colorBad;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(3),
-      ),
-      child: Text(
-        '${trend.up ? '\u25B2' : '\u25BC'} ${trend.amount}',
-        style: TextStyle(
-          color: color,
-          fontSize: 9,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 0.4,
-        ),
+    final s = skill;
+    final achieved = s != null && s.currentNetWorthEur >= 1_000_000;
+    final value = s == null
+        ? '—'
+        : (achieved ? 'DONE' : (s.projectedTimeToMillion ?? '—'));
+    final progress =
+        s == null ? 0.0 : (s.currentNetWorthEur / 1_000_000).clamp(0.0, 1.0);
+
+    return PlayerCard(
+      accent: InsightColors.wealth,
+      margin: EdgeInsets.zero,
+      onTap: s == null ? null : () => showWealthInsight(context, s),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const CardLabel('TO €1M', color: InsightColors.wealth),
+              const Spacer(),
+              const TapHint(color: InsightColors.wealth),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            value,
+            style: TextStyle(
+              color: value == '—'
+                  ? RpgColors.textMuted
+                  : InsightColors.wealth,
+              fontSize: 26,
+              fontWeight: FontWeight.w800,
+              height: 1.0,
+              letterSpacing: -0.8,
+            ),
+          ),
+          const SizedBox(height: 10),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(2),
+            child: TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0, end: progress),
+              duration: const Duration(milliseconds: 1200),
+              curve: Curves.easeOutCubic,
+              builder: (_, v, _) => LinearProgressIndicator(
+                value: v,
+                minHeight: 4,
+                backgroundColor: RpgColors.progressTrack,
+                valueColor:
+                    const AlwaysStoppedAnimation(InsightColors.wealth),
+              ),
+            ),
+          ),
+          const SizedBox(height: 7),
+          Text(
+            '${(progress * 100).toStringAsFixed(1)}% of the way',
+            style: const TextStyle(color: RpgColors.textMuted, fontSize: 9),
+          ),
+        ],
       ),
     );
   }

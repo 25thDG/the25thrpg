@@ -34,6 +34,26 @@ void main() {
       expect(s.cleanDayBonus, 0);
     });
 
+    test('clean days to next bonus counts down inside the current block', () {
+      const s = SkillSummary(skill: SkillId.mindfulness, cleanDays: 43);
+      expect(s.cleanDaysToNextBonus, 7);
+    });
+
+    test('a fresh block needs the full ten days', () {
+      const s = SkillSummary(skill: SkillId.mindfulness, cleanDays: 40);
+      expect(s.cleanDaysToNextBonus, 10);
+    });
+
+    test('clean days to next bonus is null once the bonus is capped', () {
+      const s = SkillSummary(skill: SkillId.mindfulness, cleanDays: 900);
+      expect(s.cleanDaysToNextBonus, isNull);
+    });
+
+    test('non-mindfulness skills have no bonus countdown', () {
+      const s = SkillSummary(skill: SkillId.japanese, cleanDays: 43);
+      expect(s.cleanDaysToNextBonus, isNull);
+    });
+
     test('mastery ignores the clean-day bonus', () {
       // 500 meditation min is far below the 2,000 target, so no mastery even
       // though clean days push the raw level past 100.

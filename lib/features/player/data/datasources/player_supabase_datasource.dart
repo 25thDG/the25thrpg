@@ -21,11 +21,15 @@ class PlayerTimeRaw {
   /// for mindfulness).
   final int minutesSinceTracking;
 
+  /// Minutes per day for the last 7 days, oldest first. Drives the sparkline.
+  final List<int> dailyMinutesLast7;
+
   const PlayerTimeRaw({
     required this.lifetimeMinutes,
     required this.last30DaysMinutes,
     this.last7DaysMinutes = 0,
     this.minutesSinceTracking = 0,
+    this.dailyMinutesLast7 = const [],
   });
 }
 
@@ -45,12 +49,16 @@ class PlayerSobrietyRaw {
   /// Distinguishes "streak reset by a relapse" from "simply stopped logging".
   final int? daysSinceLastLog;
 
+  /// The last 14 days, oldest first: true clean, false relapse, null unlogged.
+  final List<bool?> last14Days;
+
   const PlayerSobrietyRaw({
     this.currentStreak = 0,
     this.longestStreak = 0,
     this.cleanDays = 0,
     this.relapseDays = 0,
     this.daysSinceLastLog,
+    this.last14Days = const [],
   });
 
   int get loggedDays => cleanDays + relapseDays;
@@ -110,6 +118,8 @@ class PlayerSupabaseDatasource {
     int last30 = 0;
     int last7 = 0;
     int sinceTracking = 0;
+    final daily = List<int>.filled(7, 0);
+    final today = DateTime(now.year, now.month, now.day);
 
     for (final row in (res as List).cast<Map<String, dynamic>>()) {
       final m = row['minutes'] as int? ?? 0;
@@ -118,6 +128,10 @@ class PlayerSupabaseDatasource {
       if (at.isAfter(cutoff30)) last30 += m;
       if (at.isAfter(cutoff7)) last7 += m;
       if (!at.isBefore(_trackingStart)) sinceTracking += m;
+
+      // Bucket into the last 7 calendar days, oldest first.
+      final age = today.difference(DateTime(at.year, at.month, at.day)).inDays;
+      if (age >= 0 && age < 7) daily[6 - age] += m;
     }
 
     return PlayerTimeRaw(
@@ -125,6 +139,7 @@ class PlayerSupabaseDatasource {
       last30DaysMinutes: last30,
       last7DaysMinutes: last7,
       minutesSinceTracking: sinceTracking,
+      dailyMinutesLast7: daily,
     );
   }
 
@@ -229,12 +244,19 @@ class PlayerSupabaseDatasource {
     final todayMidnight = DateTime(today.year, today.month, today.day);
     final lastLog = _parseKey(sorted.last);
 
+    // Last 14 days, oldest first, for the streak strip.
+    final strip = List<bool?>.generate(14, (i) {
+      final day = todayMidnight.subtract(Duration(days: 13 - i));
+      return dayMap[_dateKey(day)];
+    });
+
     return PlayerSobrietyRaw(
       currentStreak: current,
       longestStreak: longest,
       cleanDays: cleanDays,
       relapseDays: relapseDays,
       daysSinceLastLog: todayMidnight.difference(lastLog).inDays,
+      last14Days: strip,
     );
   }
 

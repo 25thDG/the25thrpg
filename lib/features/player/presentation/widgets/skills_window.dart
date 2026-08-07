@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../../domain/entities/skill_summary.dart';
 import 'player_section.dart';
-import 'rpg_colors.dart';
 import 'skill_milestone_sheet.dart';
 import 'skill_row_widget.dart';
 
@@ -54,32 +53,19 @@ class _SkillsWindowState extends State<SkillsWindow>
   Widget build(BuildContext context) {
     return PlayerSection(
       title: 'SKILLS',
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          ...List.generate(widget.skills.length, (i) {
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: Column(
+          children: List.generate(widget.skills.length, (i) {
             final skill = widget.skills[i];
-            final isLast = i == widget.skills.length - 1;
-            return Column(
-              children: [
-                SkillRowWidget(
-                  key: ValueKey(skill.skill),
-                  skill: skill,
-                  animation: _rowAnimations[i],
-                  onTap: () => showSkillMilestoneSheet(context, skill),
-                ),
-                if (!isLast)
-                  const Divider(
-                    height: 1,
-                    thickness: 1,
-                    color: RpgColors.divider,
-                    indent: 20,
-                    endIndent: 20,
-                  ),
-              ],
+            return SkillRowWidget(
+              key: ValueKey(skill.skill),
+              skill: skill,
+              animation: _rowAnimations[i],
+              onTap: () => showSkillMilestoneSheet(context, skill),
             );
           }),
-        ],
+        ),
       ),
     );
   }

@@ -87,6 +87,9 @@ class SkillSummary {
   final int last30DaysMinutes;
   final int last7DaysMinutes;
 
+  /// Minutes per day over the last 7 days, oldest first — the sparkline.
+  final List<int> dailyMinutesLast7;
+
   // ── Mindfulness: sobriety tracking ────────────────────────────────────────
 
   /// Consecutive clean days ending today (or yesterday if today is unlogged).
@@ -101,6 +104,9 @@ class SkillSummary {
 
   /// Days since the most recent sobriety entry. Null when nothing is logged.
   final int? daysSinceLastCleanLog;
+
+  /// Last 14 days, oldest first: true clean, false relapse, null unlogged.
+  final List<bool?> last14CleanDays;
 
   // ── Resolve: quests ───────────────────────────────────────────────────────
 
@@ -123,11 +129,13 @@ class SkillSummary {
     this.lifetimeMinutes = 0,
     this.last30DaysMinutes = 0,
     this.last7DaysMinutes = 0,
+    this.dailyMinutesLast7 = const [],
     this.cleanStreak = 0,
     this.longestCleanStreak = 0,
     this.cleanDays = 0,
     this.relapseDays = 0,
     this.daysSinceLastCleanLog,
+    this.last14CleanDays = const [],
     this.questXp = 0,
     this.questsCompleted = 0,
     this.questsActive = 0,
@@ -180,6 +188,19 @@ class SkillSummary {
     if (skill != SkillId.mindfulness) return 0;
     final bonus = cleanDays / _cleanDaysPerLevelPoint;
     return bonus.clamp(0.0, _maxCleanDayBonus);
+  }
+
+  /// Clean days that buy one level point, and the ceiling on that bonus —
+  /// exposed so the UI can explain the rule without restating the numbers.
+  static const cleanDaysPerLevelPoint = _cleanDaysPerLevelPoint;
+  static const maxCleanDayBonus = _maxCleanDayBonus;
+
+  /// Clean days still needed for the next +1 level from discipline.
+  /// Null when the bonus is capped or the skill has no sobriety component.
+  int? get cleanDaysToNextBonus {
+    if (skill != SkillId.mindfulness) return null;
+    if (cleanDayBonus >= _maxCleanDayBonus) return null;
+    return _cleanDaysPerLevelPoint - (cleanDays % _cleanDaysPerLevelPoint);
   }
 
   // ── Level (1–100) ──────────────────────────────────────────────────────────
@@ -286,10 +307,10 @@ class SkillSummary {
 
   static String _fmtEur(int amount) {
     if (amount >= 1_000_000) {
-      return '${(amount / 1_000_000).toStringAsFixed(1)}M';
+      return '€${(amount / 1_000_000).toStringAsFixed(1)}M';
     }
     if (amount >= 1_000) {
-      return '${(amount / 1_000).toStringAsFixed(1)}k';
+      return '€${(amount / 1_000).toStringAsFixed(1)}k';
     }
     return '€$amount';
   }

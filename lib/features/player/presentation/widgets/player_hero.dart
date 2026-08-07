@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../../domain/entities/player_stats.dart';
 import '../../domain/entities/skill_summary.dart';
-import 'player_stat_grid.dart';
 import 'rpg_colors.dart';
 import 'skill_radar_chart.dart';
 
@@ -12,9 +11,9 @@ const _crimsonLight = Color(0xFFE74C3C);
 /// The character view — the one loud thing on the screen.
 ///
 /// With no character art, the radar *is* the character: a silhouette whose
-/// shape is unique to this player and changes as their skills move. The level
-/// crowns it, a soft glow lifts it off the page, and everything below this is
-/// deliberately quiet.
+/// shape is unique to this player and shifts as their skills move. The core in
+/// its middle is the avatar slot; drop a portrait in later and nothing else has
+/// to change.
 class PlayerHero extends StatelessWidget {
   final PlayerStats stats;
 
@@ -28,18 +27,12 @@ class PlayerHero extends StatelessWidget {
         const Positioned.fill(child: _AmbientGlow()),
         Column(
           children: [
-            const SizedBox(height: 4),
-            _LevelCore(level: stats.playerLevel),
-            const SizedBox(height: 14),
-            _XpBar(
-              progress: stats.playerProgressToNextLevel,
-              playerLevel: stats.playerLevel,
+            _StatusHeader(stats: stats),
+            const SizedBox(height: 10),
+            SkillRadarChart(
+              skills: stats.skills,
+              core: const AvatarCore(),
             ),
-            // Enough air that the top skill label reads as part of the figure
-            // rather than a caption on the XP bar.
-            const SizedBox(height: 18),
-            // The figure. Sits below the level so nothing can overlap it.
-            SkillRadarChart(skills: stats.skills),
           ],
         ),
       ],
@@ -47,8 +40,174 @@ class PlayerHero extends StatelessWidget {
   }
 }
 
-/// A wide, very soft crimson wash behind the figure. Not a visible shape —
-/// just enough to stop the polygon floating on flat black.
+/// Level, XP and streak in one tight block.
+class _StatusHeader extends StatelessWidget {
+  final PlayerStats stats;
+
+  const _StatusHeader({required this.stats});
+
+  @override
+  Widget build(BuildContext context) {
+    final pct = (stats.playerProgressToNextLevel * 100).round();
+    final next = stats.playerLevel >= 100
+        ? 'MASTERY'
+        : 'LV ${stats.playerLevel + 1}';
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(28, 4, 28, 0),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              const Padding(
+                padding: EdgeInsets.only(bottom: 14, right: 10),
+                child: Text(
+                  'LV',
+                  style: TextStyle(
+                    color: _crimsonLight,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 3.0,
+                  ),
+                ),
+              ),
+              TweenAnimationBuilder<double>(
+                tween: Tween(begin: 0, end: stats.playerLevel.toDouble()),
+                duration: const Duration(milliseconds: 1100),
+                curve: Curves.easeOutCubic,
+                builder: (_, value, _) => Text(
+                  value.round().toString(),
+                  style: TextStyle(
+                    color: const Color(0xFFFDF4F2),
+                    fontSize: stats.playerLevel >= 100 ? 62 : 74,
+                    fontWeight: FontWeight.w900,
+                    height: 1.0,
+                    letterSpacing: -4.0,
+                    shadows: const [
+                      Shadow(color: Color(0xAAC0392B), blurRadius: 30),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          _XpBar(progress: stats.playerProgressToNextLevel),
+          const SizedBox(height: 7),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                '$pct% TO $next',
+                style: const TextStyle(
+                  color: RpgColors.textMuted,
+                  fontSize: 9,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 1.4,
+                ),
+              ),
+              Text(
+                stats.streakDays > 0
+                    ? '● ${stats.streakDays} DAY STREAK'
+                    : '○ NO STREAK',
+                style: TextStyle(
+                  color: stats.streakDays > 0
+                      ? _crimsonLight
+                      : RpgColors.textMuted,
+                  fontSize: 9,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 1.4,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The core at the heart of the polygon — a slow-breathing well of light rather
+/// than an icon, so the figure reads as a power source instead of a profile row.
+class AvatarCore extends StatefulWidget {
+  const AvatarCore({super.key});
+
+  @override
+  State<AvatarCore> createState() => _AvatarCoreState();
+}
+
+class _AvatarCoreState extends State<AvatarCore>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _pulse;
+
+  @override
+  void initState() {
+    super.initState();
+    _pulse = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2600),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _pulse.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _pulse,
+      builder: (_, _) {
+        final t = Curves.easeInOut.transform(_pulse.value);
+
+        return SizedBox(
+          width: 88,
+          height: 88,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              // Containment ring — structure, so the light has an edge.
+              Container(
+                width: 74,
+                height: 74,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: _crimson.withValues(alpha: 0.20 + t * 0.10),
+                  ),
+                ),
+              ),
+              // The light itself. No opaque disc — a solid fill would punch a
+              // dark hole through the middle of the figure.
+              Container(
+                width: 52 + t * 10,
+                height: 52 + t * 10,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(
+                    colors: [
+                      const Color(0xFFFFE3DC).withValues(alpha: 0.55 + t * 0.25),
+                      _crimsonLight.withValues(alpha: 0.34 + t * 0.14),
+                      _crimson.withValues(alpha: 0.10),
+                      Colors.transparent,
+                    ],
+                    stops: const [0.0, 0.34, 0.62, 1.0],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// A wide, very soft crimson wash behind the figure.
 class _AmbientGlow extends StatelessWidget {
   const _AmbientGlow();
 
@@ -57,10 +216,10 @@ class _AmbientGlow extends StatelessWidget {
     return DecoratedBox(
       decoration: BoxDecoration(
         gradient: RadialGradient(
-          center: const Alignment(0, -0.15),
-          radius: 0.85,
+          center: const Alignment(0, 0.05),
+          radius: 0.9,
           colors: [
-            _crimson.withValues(alpha: 0.16),
+            _crimson.withValues(alpha: 0.18),
             _crimson.withValues(alpha: 0.05),
             Colors.transparent,
           ],
@@ -71,108 +230,47 @@ class _AmbientGlow extends StatelessWidget {
   }
 }
 
-/// The player level — the crown above the figure.
-class _LevelCore extends StatelessWidget {
-  final int level;
-
-  const _LevelCore({required this.level});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        const Text(
-          'LEVEL',
-          style: TextStyle(
-            color: _crimsonLight,
-            fontSize: 9,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 3.0,
-          ),
-        ),
-        const SizedBox(height: 2),
-        TweenAnimationBuilder<double>(
-          tween: Tween(begin: 0, end: level.toDouble()),
-          duration: const Duration(milliseconds: 1100),
-          curve: Curves.easeOutCubic,
-          builder: (_, value, _) => Text(
-            value.round().toString(),
-            style: TextStyle(
-              color: const Color(0xFFFAEDEA),
-              fontSize: level >= 100 ? 60 : 72,
-              fontWeight: FontWeight.w800,
-              height: 1.0,
-              letterSpacing: -3.0,
-              shadows: const [
-                Shadow(color: Color(0x99C0392B), blurRadius: 28),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-/// Thin progress line between the level and the figure.
 class _XpBar extends StatelessWidget {
   final double progress;
-  final int playerLevel;
 
-  const _XpBar({required this.progress, required this.playerLevel});
+  const _XpBar({required this.progress});
 
   @override
   Widget build(BuildContext context) {
-    final pct = (progress * 100).round();
-    final label = playerLevel >= 100
-        ? 'to next mastery'
-        : 'to level ${playerLevel + 1}';
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 40),
-      child: Column(
-        children: [
-          TweenAnimationBuilder<double>(
-            tween: Tween(begin: 0.0, end: progress.clamp(0.0, 1.0)),
-            duration: const Duration(milliseconds: 1400),
-            curve: Curves.easeOutCubic,
-            builder: (_, v, _) => ClipRRect(
-              borderRadius: BorderRadius.circular(2),
-              child: Stack(
-                children: [
-                  Container(height: 3, color: RpgColors.progressTrack),
-                  FractionallySizedBox(
-                    widthFactor: v,
-                    child: Container(
-                      height: 3,
-                      decoration: const BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [_crimson, _crimsonLight],
-                        ),
-                      ),
-                    ),
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.0, end: progress.clamp(0.0, 1.0)),
+      duration: const Duration(milliseconds: 1400),
+      curve: Curves.easeOutCubic,
+      builder: (_, v, _) => ClipRRect(
+        borderRadius: BorderRadius.circular(3),
+        child: Stack(
+          children: [
+            Container(height: 5, color: RpgColors.progressTrack),
+            FractionallySizedBox(
+              widthFactor: v,
+              child: Container(
+                height: 5,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [_crimson, _crimsonLight],
                   ),
-                ],
+                  boxShadow: [
+                    BoxShadow(
+                      color: _crimsonLight.withValues(alpha: 0.6),
+                      blurRadius: 8,
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            '$pct% $label',
-            style: const TextStyle(
-              color: RpgColors.textMuted,
-              fontSize: 10,
-              letterSpacing: 0.4,
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 }
 
-/// The character's summary numbers, in the same grid Today uses.
+/// Top-skill / active / mastery summary, shown under the figure.
 class PlayerStatLine extends StatelessWidget {
   final PlayerStats stats;
 
@@ -180,29 +278,57 @@ class PlayerStatLine extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return PlayerStatGrid(
-      padding: const EdgeInsets.fromLTRB(20, 24, 20, 4),
-      cells: [
-        PlayerStatCell(
-          label: 'TOP SKILL',
-          value: stats.topSkill?.skill.displayName ?? '\u2014',
-          // "MINDFULNESS" needs more room than "3/4" or "12d".
-          flex: 4,
-        ),
-        PlayerStatCell(
-          label: 'ACTIVE',
-          value: '${stats.activeSkillCount}/${stats.skills.length}',
-        ),
-        PlayerStatCell(
-          label: 'MASTERY',
-          value: stats.totalMastery > 0 ? '+${stats.totalMastery}' : '\u2014',
-          valueColor: stats.totalMastery > 0 ? _crimsonLight : null,
-        ),
-        PlayerStatCell(
-          label: 'STREAK',
-          value: stats.streakDays > 0 ? '${stats.streakDays}d' : '\u2014',
-        ),
-      ],
+    final cells = <(String, String)>[
+      ('TOP SKILL', stats.topSkill?.skill.displayName ?? '—'),
+      ('ACTIVE', '${stats.activeSkillCount}/${stats.skills.length}'),
+      ('MASTERY', stats.totalMastery > 0 ? '+${stats.totalMastery}' : '—'),
+    ];
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 6, 20, 18),
+      child: Row(
+        children: [
+          for (final (i, (label, value)) in cells.indexed) ...[
+            if (i > 0)
+              Container(
+                width: 1,
+                height: 26,
+                color: RpgColors.divider,
+                margin: const EdgeInsets.symmetric(horizontal: 14),
+              ),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Text(
+                    label,
+                    style: const TextStyle(
+                      color: RpgColors.textMuted,
+                      fontSize: 8,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 1.4,
+                    ),
+                  ),
+                  const SizedBox(height: 5),
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      value,
+                      maxLines: 1,
+                      style: const TextStyle(
+                        color: RpgColors.textPrimary,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: -0.2,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
     );
   }
 }

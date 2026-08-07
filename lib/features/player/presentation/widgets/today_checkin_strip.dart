@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../data/datasources/today_status_datasource.dart';
+import 'player_card.dart';
 import 'player_section.dart';
-import 'player_stat_grid.dart';
 import 'rpg_colors.dart';
 
 const _colorJp = Color(0xFF4FC3F7);
@@ -54,65 +54,151 @@ class _TodayCheckInStripState extends State<TodayCheckInStrip> {
     return PlayerSection(
       title: 'TODAY',
       trailing: _todayLabel(),
-      child: _loading
-          ? const Padding(
-              padding: EdgeInsets.fromLTRB(20, 4, 20, 12),
-              child: SizedBox(
-                width: 14,
-                height: 14,
-                child: CircularProgressIndicator(
-                  strokeWidth: 1.5,
-                  color: RpgColors.textMuted,
-                ),
-              ),
-            )
-          : PlayerStatGrid(cells: _cells()),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
+        child: PlayerCard(
+          margin: EdgeInsets.zero,
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 14),
+          child: _loading
+              ? const SizedBox(
+                  height: 44,
+                  child: Center(
+                    child: SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 1.5,
+                        color: RpgColors.textMuted,
+                      ),
+                    ),
+                  ),
+                )
+              : Row(children: [for (final t in _tiles()) Expanded(child: t)]),
+        ),
+      ),
     );
   }
 
-  /// Today's four check-ins, in the same label/value shape as the character's
-  /// summary stats above.
-  List<PlayerStatCell> _cells() {
+  /// Today's four check-ins as a quick-access dock.
+  List<Widget> _tiles() {
     final s = _status;
     if (s == null) {
       return const [
-        PlayerStatCell(label: 'JAPANESE', value: '\u2014'),
-        PlayerStatCell(label: 'MINDFUL', value: '\u2014'),
-        PlayerStatCell(label: 'SOBRIETY', value: '\u2014'),
-        PlayerStatCell(label: 'BUDGET', value: '\u2014'),
+        _DockTile(icon: Icons.language, label: 'JAPANESE', value: '\u2014'),
+        _DockTile(
+            icon: Icons.self_improvement, label: 'MINDFUL', value: '\u2014'),
+        _DockTile(
+            icon: Icons.shield_outlined, label: 'SOBRIETY', value: '\u2014'),
+        _DockTile(icon: Icons.wallet_outlined, label: 'BUDGET', value: '\u2014'),
       ];
     }
 
     return [
-      PlayerStatCell(
+      _DockTile(
+        icon: Icons.language,
         label: 'JAPANESE',
         value: s.jpMinutes > 0 ? '${s.jpMinutes}m' : '\u2014',
-        valueColor: s.jpMinutes > 0 ? _colorJp : null,
+        color: s.jpMinutes > 0 ? _colorJp : null,
       ),
-      PlayerStatCell(
+      _DockTile(
+        icon: Icons.self_improvement,
         label: 'MINDFUL',
         value: s.mindMinutes > 0 ? '${s.mindMinutes}m' : '\u2014',
-        valueColor: s.mindMinutes > 0 ? _colorMind : null,
+        color: s.mindMinutes > 0 ? _colorMind : null,
       ),
-      PlayerStatCell(
+      _DockTile(
+        icon: s.isClean == null
+            ? Icons.shield_outlined
+            : (s.isClean! ? Icons.verified_outlined : Icons.error_outline),
         label: 'SOBRIETY',
         value: s.isClean == null
             ? '\u2014'
-            : (s.isClean! ? 'CLEAN' : 'RELAPSED'),
-        valueColor: s.isClean == null
+            : (s.isClean! ? 'CLEAN' : 'SLIP'),
+        color: s.isClean == null
             ? null
             : (s.isClean! ? _colorSober : _colorRelapse),
-        flex: 4,
       ),
-      PlayerStatCell(
+      _DockTile(
+        icon: Icons.wallet_outlined,
         label: 'BUDGET',
         value: s.budgetCents > 0
             ? '\u20AC${(s.budgetCents / 100).toStringAsFixed(0)}'
             : '\u2014',
-        valueColor: s.budgetCents > 3000
+        color: s.budgetCents > 3000
             ? _colorRelapse
             : (s.budgetCents > 0 ? _colorBudget : null),
       ),
     ];
+  }
+}
+
+/// One slot of the dock: a glowing icon puck over its value.
+class _DockTile extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+  final Color? color;
+
+  const _DockTile({
+    required this.icon,
+    required this.label,
+    required this.value,
+    this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final active = color != null;
+    final tint = color ?? RpgColors.textMuted;
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 38,
+          height: 38,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: tint.withValues(alpha: active ? 0.14 : 0.06),
+            border: Border.all(
+              color: tint.withValues(alpha: active ? 0.45 : 0.15),
+            ),
+            boxShadow: active
+                ? [
+                    BoxShadow(
+                      color: tint.withValues(alpha: 0.28),
+                      blurRadius: 12,
+                    ),
+                  ]
+                : null,
+          ),
+          child: Icon(icon, size: 17, color: tint),
+        ),
+        const SizedBox(height: 8),
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            value,
+            maxLines: 1,
+            style: TextStyle(
+              color: active ? tint : RpgColors.textMuted,
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
+              letterSpacing: -0.2,
+            ),
+          ),
+        ),
+        const SizedBox(height: 3),
+        Text(
+          label,
+          style: const TextStyle(
+            color: RpgColors.textMuted,
+            fontSize: 7,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 1.0,
+          ),
+        ),
+      ],
+    );
   }
 }

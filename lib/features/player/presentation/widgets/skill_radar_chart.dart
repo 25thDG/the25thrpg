@@ -11,6 +11,9 @@ const _topPad = 50.0; // vertical space above top vertex for its label
 const _botPad = 48.0; // vertical space below the bottom vertex for its label
 const _labelGap = 15.0; // gap between vertex and label anchor
 
+/// Radius of the avatar core sitting at the centre of the polygon.
+const _coreRadius = 42.0;
+
 /// Number of axes drawn — one per skill on the character sheet.
 const kRadarAxes = 4;
 
@@ -42,7 +45,10 @@ int radarAxisMax(List<SkillSummary> skills) {
 class SkillRadarChart extends StatelessWidget {
   final List<SkillSummary> skills;
 
-  const SkillRadarChart({super.key, required this.skills});
+  /// Sits in the middle of the polygon — the avatar core.
+  final Widget? core;
+
+  const SkillRadarChart({super.key, required this.skills, this.core});
 
   @override
   Widget build(BuildContext context) {
@@ -53,11 +59,26 @@ class SkillRadarChart extends StatelessWidget {
         final e = _unitExtents(kRadarAxes);
         final r = (constraints.maxWidth - 2 * _sidePad) / (2 * e.side);
         final h = _topPad + (e.top + e.bottom) * r + _botPad;
+        final cy = _topPad + e.top * r;
 
         return SizedBox(
           width: constraints.maxWidth,
           height: h,
-          child: _AnimatedRadar(skills: skills, axisMax: axisMax),
+          child: Stack(
+            children: [
+              if (core != null)
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  top: cy - _coreRadius,
+                  height: _coreRadius * 2,
+                  child: Center(child: core!),
+                ),
+              Positioned.fill(
+                child: _AnimatedRadar(skills: skills, axisMax: axisMax),
+              ),
+            ],
+          ),
         );
       },
     );
@@ -158,7 +179,9 @@ class _RadarPainter extends CustomPainter {
     }
 
     // ── Grid rings ────────────────────────────────────────────────────────────
-    for (final frac in [0.25, 0.5, 0.75, 1.0]) {
+    // The outer ring gets a faint cyan-white bloom so the arena reads as lit
+    // glass rather than a flat wireframe.
+    for (final frac in [0.5, 0.75, 1.0]) {
       final isOuter = frac == 1.0;
       final path = Path();
       for (int i = 0; i < n; i++) {
@@ -166,12 +189,24 @@ class _RadarPainter extends CustomPainter {
         i == 0 ? path.moveTo(p.dx, p.dy) : path.lineTo(p.dx, p.dy);
       }
       path.close();
+
+      if (isOuter) {
+        canvas.drawPath(
+          path,
+          Paint()
+            ..color = const Color(0xFF8FA8C8).withValues(alpha: 0.18)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 3
+            ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4),
+        );
+      }
       canvas.drawPath(
         path,
         Paint()
-          ..color = RpgColors.divider.withValues(alpha: isOuter ? 0.9 : 0.45)
+          ..color = const Color(0xFF8FA8C8)
+              .withValues(alpha: isOuter ? 0.42 : 0.13)
           ..style = PaintingStyle.stroke
-          ..strokeWidth = isOuter ? 1.0 : 0.7,
+          ..strokeWidth = isOuter ? 1.1 : 0.7,
       );
     }
 
@@ -181,7 +216,12 @@ class _RadarPainter extends CustomPainter {
       ..strokeWidth = 0.5;
 
     for (int i = 0; i < n; i++) {
-      canvas.drawLine(center, vertex(i, 1.0), axisPaint);
+      final angle = -pi / 2 + (2 * pi / n) * i;
+      final start = Offset(
+        center.dx + (_coreRadius + 6) * cos(angle),
+        center.dy + (_coreRadius + 6) * sin(angle),
+      );
+      canvas.drawLine(start, vertex(i, 1.0), axisPaint);
     }
 
     // ── Data polygon ──────────────────────────────────────────────────────────
@@ -212,41 +252,53 @@ class _RadarPainter extends CustomPainter {
           stops: const [0.0, 0.45, 1.0],
         ).createShader(Rect.fromCircle(center: center, radius: r)),
     );
-    // Glow
+    // Two blur passes — a wide soft halo plus a tight bloom — then a bright
+    // core line, which is what makes a stroke read as "emitting" light.
     canvas.drawPath(
       dataPath,
       Paint()
-        ..color = RpgColors.accent.withValues(alpha: 0.25)
+        ..color = const Color(0xFFE74C3C).withValues(alpha: 0.30)
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 5
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5),
+        ..strokeWidth = 12
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 14),
     );
-    // Solid stroke
     canvas.drawPath(
       dataPath,
       Paint()
-        ..color = RpgColors.accent.withValues(alpha: 0.9)
+        ..color = const Color(0xFFFF7A6B).withValues(alpha: 0.55)
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.8,
+        ..strokeWidth = 4
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4),
+    );
+    canvas.drawPath(
+      dataPath,
+      Paint()
+        ..color = const Color(0xFFFFD9D2)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.6,
     );
 
     // ── Vertex dots ───────────────────────────────────────────────────────────
     for (int i = 0; i < dataPoints.length; i++) {
       final color = skillColor(_displayOrder[i]);
+      final p = dataPoints[i];
       canvas.drawCircle(
-          dataPoints[i], 7, Paint()..color = color.withValues(alpha: 0.18));
+        p,
+        10,
+        Paint()
+          ..color = color.withValues(alpha: 0.35)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8),
+      );
+      canvas.drawCircle(p, 5.5, Paint()..color = RpgColors.pageBg);
       canvas.drawCircle(
-          dataPoints[i],
-          4.5,
-          Paint()
-            ..color = RpgColors.panelBg
-            ..style = PaintingStyle.fill);
-      canvas.drawCircle(
-          dataPoints[i],
-          3.5,
-          Paint()
-            ..color = color
-            ..style = PaintingStyle.fill);
+        p,
+        5.5,
+        Paint()
+          ..color = color
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.6,
+      );
+      canvas.drawCircle(p, 2.6, Paint()..color = color);
     }
 
     // ── Labels ────────────────────────────────────────────────────────────────

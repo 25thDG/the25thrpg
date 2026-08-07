@@ -26,6 +26,7 @@ class PlayerRepositoryImpl implements PlayerRepository {
         lifetimeMinutes: japanese.lifetimeMinutes,
         last30DaysMinutes: japanese.last30DaysMinutes,
         last7DaysMinutes: japanese.last7DaysMinutes,
+        dailyMinutesLast7: japanese.dailyMinutesLast7,
       ),
       SkillSummary(
         skill: SkillId.wealth,
@@ -42,6 +43,7 @@ class PlayerRepositoryImpl implements PlayerRepository {
         cleanDays: sobriety.cleanDays,
         relapseDays: sobriety.relapseDays,
         daysSinceLastCleanLog: sobriety.daysSinceLastLog,
+        last14CleanDays: sobriety.last14Days,
       ),
       SkillSummary(
         skill: SkillId.resolve,
