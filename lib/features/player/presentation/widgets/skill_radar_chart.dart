@@ -36,8 +36,9 @@ int radarAxisMax(List<SkillSummary> skills) {
   return (best / 10).ceil() * 10;
 }
 
-/// Radar chart over every skill — the box is sized exactly to contain the
-/// polygon plus its labels, with no wasted whitespace.
+/// The character itself: a polygon whose shape is unique to the player and
+/// shifts as their skills move. Rendered chrome-free so it reads as a figure on
+/// the page rather than a chart in a box.
 class SkillRadarChart extends StatelessWidget {
   final List<SkillSummary> skills;
 
@@ -47,93 +48,18 @@ class SkillRadarChart extends StatelessWidget {
   Widget build(BuildContext context) {
     final axisMax = radarAxisMax(skills);
 
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      decoration: BoxDecoration(
-        color: RpgColors.panelBg,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: RpgColors.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _RadarHeader(axisMax: axisMax),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 10, 16, 14),
-            child: LayoutBuilder(
-              builder: (_, constraints) {
-                // Radius constrained by horizontal space after side labels.
-                final e = _unitExtents(kRadarAxes);
-                final r =
-                    (constraints.maxWidth - 2 * _sidePad) / (2 * e.side);
-                // Exact height: label above the top vertex + polygon height +
-                // label below the bottom one.
-                final h = _topPad + (e.top + e.bottom) * r + _botPad;
-                return SizedBox(
-                  width: constraints.maxWidth,
-                  height: h,
-                  child: _AnimatedRadar(skills: skills, axisMax: axisMax),
-                );
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
+    return LayoutBuilder(
+      builder: (_, constraints) {
+        final e = _unitExtents(kRadarAxes);
+        final r = (constraints.maxWidth - 2 * _sidePad) / (2 * e.side);
+        final h = _topPad + (e.top + e.bottom) * r + _botPad;
 
-class _RadarHeader extends StatelessWidget {
-  final int axisMax;
-
-  const _RadarHeader({required this.axisMax});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          height: 3,
-          decoration: const BoxDecoration(
-            borderRadius: BorderRadius.vertical(top: Radius.circular(4)),
-            gradient: LinearGradient(
-              colors: [Color(0xFFC0392B), Color(0xFFE74C3C)],
-            ),
-          ),
-        ),
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          decoration: const BoxDecoration(
-            border: Border(bottom: BorderSide(color: RpgColors.divider)),
-          ),
-          child: Row(
-            children: [
-              const Text(
-                'SKILL RADAR',
-                style: TextStyle(
-                  color: RpgColors.textMuted,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 2.4,
-                ),
-              ),
-              const Spacer(),
-              // The axis rescales to the data, so state the ceiling.
-              Text(
-                'EDGE = Lv $axisMax',
-                style: const TextStyle(
-                  color: RpgColors.textMuted,
-                  fontSize: 9,
-                  fontWeight: FontWeight.w500,
-                  letterSpacing: 1.0,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
+        return SizedBox(
+          width: constraints.maxWidth,
+          height: h,
+          child: _AnimatedRadar(skills: skills, axisMax: axisMax),
+        );
+      },
     );
   }
 }
@@ -275,11 +201,15 @@ class _RadarPainter extends CustomPainter {
     canvas.drawPath(
       dataPath,
       Paint()
+        // Hollow core so the level number reads cleanly, dense at the rim so
+        // the silhouette still has body.
         ..shader = RadialGradient(
           colors: [
-            RpgColors.accent.withValues(alpha: 0.38),
-            RpgColors.accent.withValues(alpha: 0.08),
+            RpgColors.accent.withValues(alpha: 0.02),
+            RpgColors.accent.withValues(alpha: 0.10),
+            RpgColors.accent.withValues(alpha: 0.42),
           ],
+          stops: const [0.0, 0.45, 1.0],
         ).createShader(Rect.fromCircle(center: center, radius: r)),
     );
     // Glow

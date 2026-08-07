@@ -8,10 +8,9 @@ import '../../data/datasources/player_supabase_datasource.dart';
 import '../../data/repositories/player_repository_impl.dart';
 import '../controllers/player_controller.dart';
 import '../state/player_state.dart';
+import '../widgets/player_hero.dart';
 import '../widgets/player_insights_panel.dart';
-import '../widgets/player_level_panel.dart';
 import '../widgets/rpg_colors.dart';
-import '../widgets/skill_radar_chart.dart';
 import '../widgets/skills_window.dart';
 import '../widgets/today_checkin_strip.dart';
 
@@ -177,14 +176,12 @@ class _PlayerPageState extends State<PlayerPage> {
             padding: const EdgeInsets.only(top: 8, bottom: 40),
             sliver: SliverList(
               delegate: SliverChildListDelegate([
+                // The character, and nothing competing with it.
+                PlayerHero(stats: stats),
+                PlayerStatLine(stats: stats),
+                // Everything below supports the figure above.
                 const TodayCheckInStrip(),
-                const SizedBox(height: 14),
-                PlayerLevelPanel(stats: stats),
-                const SizedBox(height: 14),
                 PlayerInsightsPanel(stats: stats),
-                const SizedBox(height: 14),
-                SkillRadarChart(skills: stats.skills),
-                const SizedBox(height: 14),
                 SkillsWindow(skills: stats.skills),
               ]),
             ),

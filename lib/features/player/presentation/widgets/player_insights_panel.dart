@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../domain/entities/player_stats.dart';
 import '../../domain/entities/skill_summary.dart';
+import 'player_row.dart';
+import 'player_section.dart';
 import 'rpg_colors.dart';
 
 const _colorJp = Color(0xFF4FC3F7);
@@ -31,24 +33,18 @@ class PlayerInsightsPanel extends StatelessWidget {
     final mind = _skill(SkillId.mindfulness);
     final wealth = _skill(SkillId.wealth);
 
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      decoration: BoxDecoration(
-        color: RpgColors.panelBg,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: RpgColors.border),
-      ),
+    return PlayerSection(
+      title: 'INSIGHTS',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const _InsightsHeader(),
           _japanesePaceRow(jp),
-          const _Divider(),
+          const PlayerRowDivider(),
           _nextLevelRow(jp),
-          const _Divider(),
+          const PlayerRowDivider(),
           _sobrietyRow(mind),
-          const _Divider(),
-          _InsightRow(
+          const PlayerRowDivider(),
+          _insightRow(
             color: _colorWealth,
             label: 'WEALTH',
             sublabel: 'est. time to €1,000,000',
@@ -67,7 +63,7 @@ class PlayerInsightsPanel extends StatelessWidget {
 
   Widget _japanesePaceRow(SkillSummary? jp) {
     if (jp == null || !jp.hasPaceData) {
-      return const _InsightRow(
+      return _insightRow(
         color: _colorJp,
         label: 'JAPANESE',
         sublabel: 'no sessions in the last 30 days',
@@ -79,7 +75,7 @@ class PlayerInsightsPanel extends StatelessWidget {
     // Below half a minute a day either way is noise, not a trend.
     final flat = delta.abs() < 0.5;
 
-    return _InsightRow(
+    return _insightRow(
       color: _colorJp,
       label: 'JAPANESE',
       sublabel: flat
@@ -94,7 +90,7 @@ class PlayerInsightsPanel extends StatelessWidget {
 
   Widget _nextLevelRow(SkillSummary? jp) {
     if (jp == null) {
-      return const _InsightRow(
+      return _insightRow(
         color: _colorLevel,
         label: 'NEXT LEVEL',
         sublabel: 'japanese',
@@ -104,7 +100,7 @@ class PlayerInsightsPanel extends StatelessWidget {
 
     final remaining = jp.minutesToNextLevel;
     if (remaining == null) {
-      return _InsightRow(
+      return _insightRow(
         color: _colorLevel,
         label: 'NEXT LEVEL',
         sublabel: 'japanese · maxed, chasing mastery',
@@ -118,7 +114,7 @@ class PlayerInsightsPanel extends StatelessWidget {
 
     // No recent pace — show the distance, but no date we can't back up.
     if (days == null) {
-      return _InsightRow(
+      return _insightRow(
         color: _colorLevel,
         label: 'NEXT LEVEL',
         sublabel: 'japanese Lv ${jp.nextLevel} · $togo · no recent pace',
@@ -126,7 +122,7 @@ class PlayerInsightsPanel extends StatelessWidget {
       );
     }
 
-    return _InsightRow(
+    return _insightRow(
       color: _colorLevel,
       label: 'NEXT LEVEL',
       sublabel: 'japanese Lv ${jp.nextLevel} · $togo at 30d pace',
@@ -148,7 +144,7 @@ class PlayerInsightsPanel extends StatelessWidget {
 
   Widget _sobrietyRow(SkillSummary? mind) {
     if (mind == null || mind.loggedCleanDays == 0) {
-      return const _InsightRow(
+      return _insightRow(
         color: _colorSober,
         label: 'SOBRIETY',
         sublabel: 'no days logged yet',
@@ -163,7 +159,7 @@ class PlayerInsightsPanel extends StatelessWidget {
 
     // Logging lapsed — a zero streak here means "unknown", not "relapsed".
     if (mind.isCleanLogStale) {
-      return _InsightRow(
+      return _insightRow(
         color: RpgColors.textMuted,
         label: 'SOBRIETY',
         sublabel: 'not logged for ${mind.daysSinceLastCleanLog}d · $history',
@@ -171,7 +167,7 @@ class PlayerInsightsPanel extends StatelessWidget {
       );
     }
 
-    return _InsightRow(
+    return _insightRow(
       color: streak > 0 ? _colorSober : _colorBad,
       label: 'SOBRIETY',
       sublabel: streak > 0 ? history : 'streak reset · $history',
@@ -198,6 +194,24 @@ class PlayerInsightsPanel extends StatelessWidget {
   }
 }
 
+/// Maps an insight onto the shared row shape.
+Widget _insightRow({
+  required Color color,
+  required String label,
+  required String sublabel,
+  required String value,
+  Color? valueColor,
+  _Trend? trend,
+}) =>
+    PlayerRow(
+      dotColor: color,
+      title: label,
+      subtitle: sublabel,
+      value: value,
+      valueColor: valueColor,
+      badge: trend == null ? null : _TrendBadge(trend: trend),
+    );
+
 /// A rise or fall against the longer-run baseline.
 class _Trend {
   final bool up;
@@ -206,129 +220,7 @@ class _Trend {
   const _Trend({required this.up, required this.amount});
 }
 
-class _InsightsHeader extends StatelessWidget {
-  const _InsightsHeader();
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          height: 3,
-          decoration: const BoxDecoration(
-            borderRadius: BorderRadius.vertical(top: Radius.circular(4)),
-            gradient: LinearGradient(
-              colors: [Color(0xFFC0392B), Color(0xFFE74C3C)],
-            ),
-          ),
-        ),
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          decoration: const BoxDecoration(
-            border: Border(bottom: BorderSide(color: RpgColors.divider)),
-          ),
-          child: const Text(
-            'INSIGHTS',
-            style: TextStyle(
-              color: RpgColors.textMuted,
-              fontSize: 10,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 2.4,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _InsightRow extends StatelessWidget {
-  final Color color;
-  final String label;
-  final String sublabel;
-  final String value;
-  final Color? valueColor;
-  final _Trend? trend;
-
-  const _InsightRow({
-    required this.color,
-    required this.label,
-    required this.sublabel,
-    required this.value,
-    this.valueColor,
-    this.trend,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return IntrinsicHeight(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // Colored left accent bar
-          Container(width: 3, color: color),
-          // Content
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  // Label + sublabel
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          label,
-                          style: TextStyle(
-                            color: color.withValues(alpha: 0.9),
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 1.8,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          sublabel,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: RpgColors.textMuted,
-                            fontSize: 9,
-                            height: 1.35,
-                            letterSpacing: 0.3,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  // Value + optional trend badge
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      _AnimatedValue(value: value, color: valueColor),
-                      if (trend != null) ...[
-                        const SizedBox(height: 4),
-                        _TrendBadge(trend: trend!),
-                      ],
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
+/// A rise or fall shown as a small badge under the value.
 class _TrendBadge extends StatelessWidget {
   final _Trend trend;
 
@@ -344,7 +236,7 @@ class _TrendBadge extends StatelessWidget {
         borderRadius: BorderRadius.circular(3),
       ),
       child: Text(
-        '${trend.up ? '▲' : '▼'} ${trend.amount}',
+        '${trend.up ? '\u25B2' : '\u25BC'} ${trend.amount}',
         style: TextStyle(
           color: color,
           fontSize: 9,
@@ -352,51 +244,6 @@ class _TrendBadge extends StatelessWidget {
           letterSpacing: 0.4,
         ),
       ),
-    );
-  }
-}
-
-class _AnimatedValue extends StatelessWidget {
-  final String value;
-  final Color? color;
-
-  const _AnimatedValue({required this.value, this.color});
-
-  @override
-  Widget build(BuildContext context) {
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0.0, end: 1.0),
-      duration: const Duration(milliseconds: 700),
-      curve: Curves.easeOutCubic,
-      builder: (_, t, child) => Opacity(
-        opacity: t,
-        child: child,
-      ),
-      child: Text(
-        value,
-        style: TextStyle(
-          color: value == '—'
-              ? RpgColors.textMuted
-              : (color ?? RpgColors.textPrimary),
-          fontSize: 20,
-          fontWeight: FontWeight.w700,
-          letterSpacing: -0.3,
-        ),
-      ),
-    );
-  }
-}
-
-class _Divider extends StatelessWidget {
-  const _Divider();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Divider(
-      height: 1,
-      thickness: 1,
-      color: RpgColors.divider,
-      indent: 3,
     );
   }
 }

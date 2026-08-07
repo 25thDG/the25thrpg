@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 
 import '../../domain/entities/skill_summary.dart';
+import 'player_section.dart';
 import 'rpg_colors.dart';
 import 'skill_milestone_sheet.dart';
 import 'skill_row_widget.dart';
 
-/// The full-width framed Skills table — lists all tracked skills
-/// with staggered fade-in animations.
+/// Skills list — one row per tracked skill, with staggered fade-in.
 class SkillsWindow extends StatefulWidget {
   final List<SkillSummary> skills;
 
@@ -52,17 +52,11 @@ class _SkillsWindowState extends State<SkillsWindow>
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      decoration: BoxDecoration(
-        color: RpgColors.panelBg,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: RpgColors.border),
-      ),
+    return PlayerSection(
+      title: 'SKILLS',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _WindowHeader(),
           ...List.generate(widget.skills.length, (i) {
             final skill = widget.skills[i];
             final isLast = i == widget.skills.length - 1;
@@ -87,42 +81,6 @@ class _SkillsWindowState extends State<SkillsWindow>
           }),
         ],
       ),
-    );
-  }
-}
-
-class _WindowHeader extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          height: 3,
-          decoration: const BoxDecoration(
-            borderRadius: BorderRadius.vertical(top: Radius.circular(4)),
-            gradient: LinearGradient(
-              colors: [Color(0xFFC0392B), Color(0xFFE74C3C)],
-            ),
-          ),
-        ),
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-          decoration: const BoxDecoration(
-            border: Border(bottom: BorderSide(color: RpgColors.divider)),
-          ),
-          child: const Text(
-            'SKILLS',
-            style: TextStyle(
-              color: RpgColors.textMuted,
-              fontSize: 10,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 2.4,
-            ),
-          ),
-        ),
-      ],
     );
   }
 }

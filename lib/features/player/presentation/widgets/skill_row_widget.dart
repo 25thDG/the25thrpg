@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
 
 import '../../domain/entities/skill_summary.dart';
-import 'skill_colors.dart';
+import 'player_row.dart';
 import 'rpg_colors.dart';
+import 'skill_colors.dart';
 
-/// A single row in the Skills window.
+/// A single skill in the Skills list.
 ///
-/// Layout:
-///   [Skill name + descriptor] | [Level / Mastery] | [Progress bar + status]
-///
-/// Animates in via [animation] — caller supplies a staggered
-/// [Animation<double>] (opacity + vertical offset).
+/// Was three dense columns (name+descriptor | big level | status+bar+remaining)
+/// which fought the airy character view above it. Now it is the same two-part
+/// row as everything else: identity on the left, level and progress on the
+/// right, with the "what's left" text folded into the subtitle.
 class SkillRowWidget extends StatelessWidget {
   final SkillSummary skill;
   final Animation<double> animation;
@@ -25,7 +25,16 @@ class SkillRowWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final accentColor = skillColor(skill.skill);
+    final hasMastery = skill.mastery > 0;
+    final remaining = skill.remainingToNextLevel;
+
+    // Only the exception gets a word. "ACTIVE" on three of four rows was noise;
+    // the lit dot already says it.
+    final target = hasMastery
+        ? '$remaining to +${skill.mastery + 1}'
+        : '$remaining to Lv ${skill.level + 1}';
+    final subtitle =
+        skill.isActive ? target : 'DORMANT · $target';
 
     return FadeTransition(
       opacity: animation,
@@ -34,225 +43,52 @@ class SkillRowWidget extends StatelessWidget {
           begin: const Offset(0, 0.18),
           end: Offset.zero,
         ).animate(animation),
-        child: InkWell(
-          onTap: onTap,
-          child: IntrinsicHeight(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // Colored left accent bar
-                Container(
-                  width: 3,
-                  color: skill.isActive
-                      ? accentColor
-                      : accentColor.withValues(alpha: 0.25),
-                ),
-                // Row content
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 20, vertical: 16),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        // LEFT — name + descriptor
-                        Expanded(
-                          flex: 5,
-                          child: _NameColumn(skill: skill),
-                        ),
-                        // CENTER — level / mastery
-                        SizedBox(
-                          width: 72,
-                          child: _LevelDisplay(skill: skill),
-                        ),
-                        // RIGHT — bar + status
-                        Expanded(
-                          flex: 5,
-                          child: _ProgressColumn(skill: skill),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
+        child: PlayerRow(
+          dotColor: skillColor(skill.skill),
+          dimDot: !skill.isActive,
+          title: skill.skill.displayName,
+          subtitle: subtitle,
+          value: hasMastery ? '+${skill.mastery}' : '${skill.level}',
+          valueColor: hasMastery ? RpgColors.accent : null,
+          valueFooter: _ThinBar(
+            progress: skill.progressToNextLevel,
+            isActive: skill.isActive,
           ),
+          onTap: onTap,
         ),
       ),
     );
   }
 }
 
-// ── Name + descriptor ────────────────────────────────────────────────────────
-
-class _NameColumn extends StatelessWidget {
-  final SkillSummary skill;
-
-  const _NameColumn({required this.skill});
-
-  @override
-  Widget build(BuildContext context) {
-    final nameColor = skill.isActive
-        ? RpgColors.textPrimary
-        : RpgColors.textSecondary.withValues(alpha: 0.6);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          skill.skill.displayName,
-          style: TextStyle(
-            color: nameColor,
-            fontSize: 12,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 1.6,
-          ),
-        ),
-        const SizedBox(height: 3),
-        Text(
-          skill.skill.descriptor,
-          style: TextStyle(
-            color: RpgColors.textMuted.withValues(
-              alpha: skill.isActive ? 1.0 : 0.5,
-            ),
-            fontSize: 10,
-            letterSpacing: 0.2,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-// ── Level number / mastery badge ──────────────────────────────────────────────
-
-class _LevelDisplay extends StatelessWidget {
-  final SkillSummary skill;
-
-  const _LevelDisplay({required this.skill});
-
-  @override
-  Widget build(BuildContext context) {
-    final isActive = skill.isActive;
-    final hasMastery = skill.mastery > 0;
-    final numColor = isActive
-        ? RpgColors.textPrimary
-        : RpgColors.textSecondary.withValues(alpha: 0.5);
-    final accentAlpha = isActive ? 0.9 : 0.4;
-
-    final displayValue =
-        hasMastery ? skill.mastery.toDouble() : skill.level.toDouble();
-    final label = hasMastery ? 'MASTERY' : 'Lv.';
-    final labelColor = hasMastery
-        ? RpgColors.accent
-        : RpgColors.accent.withValues(alpha: accentAlpha);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            color: labelColor,
-            fontSize: 9,
-            fontWeight: FontWeight.w500,
-            letterSpacing: 1.2,
-          ),
-        ),
-        const SizedBox(height: 1),
-        TweenAnimationBuilder<double>(
-          tween: Tween(begin: 0, end: displayValue),
-          duration: const Duration(milliseconds: 800),
-          curve: Curves.easeOutCubic,
-          builder: (_, value, _) => Text(
-            hasMastery ? '+${value.round()}' : value.round().toString(),
-            style: TextStyle(
-              color: hasMastery ? RpgColors.accent : numColor,
-              fontSize: hasMastery ? 22 : 28,
-              fontWeight: FontWeight.w700,
-              height: 1.0,
-              letterSpacing: -0.5,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-// ── Progress bar + status ─────────────────────────────────────────────────────
-
-class _ProgressColumn extends StatelessWidget {
-  final SkillSummary skill;
-
-  const _ProgressColumn({required this.skill});
-
-  @override
-  Widget build(BuildContext context) {
-    final isActive = skill.isActive;
-    final fillColor = isActive
-        ? RpgColors.progressFillActive
-        : RpgColors.progressFillDormant;
-    final statusColor =
-        isActive ? RpgColors.statusActive : RpgColors.statusDormant;
-    final statusLabel = isActive ? 'ACTIVE' : 'DORMANT';
-
-    final remaining = skill.remainingToNextLevel;
-    final hasMastery = skill.mastery > 0;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: [
-        Text(
-          statusLabel,
-          style: TextStyle(
-            color: statusColor,
-            fontSize: 9,
-            fontWeight: FontWeight.w600,
-            letterSpacing: 1.6,
-          ),
-        ),
-        const SizedBox(height: 8),
-        TweenAnimationBuilder<double>(
-          tween: Tween(begin: 0.0, end: skill.progressToNextLevel),
-          duration: const Duration(milliseconds: 1200),
-          curve: Curves.easeOutCubic,
-          builder: (_, value, _) => _ThinBar(
-            progress: value,
-            fillColor: fillColor,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          hasMastery ? '$remaining to +${skill.mastery + 1}' : '$remaining to Lv.${skill.level + 1}',
-          style: TextStyle(
-            color: RpgColors.textMuted.withValues(alpha: 0.7),
-            fontSize: 9,
-            letterSpacing: 0.3,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-// ── Thin progress bar ─────────────────────────────────────────────────────────
-
+/// Short progress bar sitting under the level number.
 class _ThinBar extends StatelessWidget {
   final double progress;
-  final Color fillColor;
+  final bool isActive;
 
-  const _ThinBar({required this.progress, required this.fillColor});
+  const _ThinBar({required this.progress, required this.isActive});
 
   @override
   Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(1),
-      child: LinearProgressIndicator(
-        value: progress,
-        backgroundColor: RpgColors.progressTrack,
-        valueColor: AlwaysStoppedAnimation<Color>(fillColor),
-        minHeight: 3,
+    return SizedBox(
+      width: 56,
+      child: TweenAnimationBuilder<double>(
+        tween: Tween(begin: 0.0, end: progress.clamp(0.0, 1.0)),
+        duration: const Duration(milliseconds: 1200),
+        curve: Curves.easeOutCubic,
+        builder: (_, value, _) => ClipRRect(
+          borderRadius: BorderRadius.circular(1),
+          child: LinearProgressIndicator(
+            value: value,
+            backgroundColor: RpgColors.progressTrack,
+            valueColor: AlwaysStoppedAnimation<Color>(
+              isActive
+                  ? RpgColors.progressFillActive
+                  : RpgColors.progressFillDormant,
+            ),
+            minHeight: 3,
+          ),
+        ),
       ),
     );
   }

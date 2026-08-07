@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../data/datasources/today_status_datasource.dart';
+import 'player_section.dart';
+import 'player_stat_grid.dart';
 import 'rpg_colors.dart';
 
 const _colorJp = Color(0xFF4FC3F7);
@@ -49,183 +51,68 @@ class _TodayCheckInStripState extends State<TodayCheckInStrip> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      decoration: BoxDecoration(
-        color: RpgColors.panelBg,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: RpgColors.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Rainbow accent bar
-          Container(
-            height: 3,
-            decoration: const BoxDecoration(
-              borderRadius: BorderRadius.vertical(top: Radius.circular(4)),
-              gradient: LinearGradient(
-                colors: [_colorJp, _colorMind, _colorSober, _colorBudget],
-              ),
-            ),
-          ),
-          // Header
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            decoration: const BoxDecoration(
-              border: Border(bottom: BorderSide(color: RpgColors.divider)),
-            ),
-            child: Row(
-              children: [
-                const Text(
-                  'TODAY',
-                  style: TextStyle(
-                    color: RpgColors.textMuted,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 2.4,
-                  ),
-                ),
-                const Spacer(),
-                Text(
-                  _todayLabel(),
-                  style: const TextStyle(
-                    color: RpgColors.textMuted,
-                    fontSize: 10,
-                    letterSpacing: 0.4,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          // Status row
-          if (_loading)
-            const Padding(
-              padding: EdgeInsets.all(20),
-              child: Center(
-                child: SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 1.5,
-                    color: RpgColors.textMuted,
-                  ),
+    return PlayerSection(
+      title: 'TODAY',
+      trailing: _todayLabel(),
+      child: _loading
+          ? const Padding(
+              padding: EdgeInsets.fromLTRB(20, 4, 20, 12),
+              child: SizedBox(
+                width: 14,
+                height: 14,
+                child: CircularProgressIndicator(
+                  strokeWidth: 1.5,
+                  color: RpgColors.textMuted,
                 ),
               ),
             )
-          else if (_status == null)
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-              child: Text('—', style: TextStyle(color: RpgColors.textMuted)),
-            )
-          else
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 14),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: _Chip(
-                      label: 'JAPANESE',
-                      value: _status!.jpMinutes > 0
-                          ? '${_status!.jpMinutes}m'
-                          : '—',
-                      color: _status!.jpMinutes > 0
-                          ? _colorJp
-                          : RpgColors.textMuted,
-                      icon: Icons.language,
-                    ),
-                  ),
-                  Expanded(
-                    child: _Chip(
-                      label: 'MINDFUL',
-                      value: _status!.mindMinutes > 0
-                          ? '${_status!.mindMinutes}m'
-                          : '—',
-                      color: _status!.mindMinutes > 0
-                          ? _colorMind
-                          : RpgColors.textMuted,
-                      icon: Icons.self_improvement,
-                    ),
-                  ),
-                  Expanded(
-                    child: _Chip(
-                      label: 'SOBRIETY',
-                      value: _status!.isClean == null
-                          ? '—'
-                          : (_status!.isClean! ? 'CLEAN' : 'RELAPSED'),
-                      color: _status!.isClean == null
-                          ? RpgColors.textMuted
-                          : (_status!.isClean! ? _colorSober : _colorRelapse),
-                      icon: _status!.isClean == null
-                          ? Icons.radio_button_unchecked
-                          : (_status!.isClean!
-                              ? Icons.check_circle_outline
-                              : Icons.cancel_outlined),
-                    ),
-                  ),
-                  Expanded(
-                    child: _Chip(
-                      label: 'BUDGET',
-                      value: _status!.budgetCents > 0
-                          ? '€${(_status!.budgetCents / 100).toStringAsFixed(2)}'
-                          : '—',
-                      color: _status!.budgetCents > 3000
-                          ? _colorRelapse
-                          : (_status!.budgetCents > 0
-                              ? _colorBudget
-                              : RpgColors.textMuted),
-                      icon: Icons.wallet_outlined,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-        ],
-      ),
+          : PlayerStatGrid(cells: _cells()),
     );
   }
-}
 
-class _Chip extends StatelessWidget {
-  final String label;
-  final String value;
-  final Color color;
-  final IconData icon;
+  /// Today's four check-ins, in the same label/value shape as the character's
+  /// summary stats above.
+  List<PlayerStatCell> _cells() {
+    final s = _status;
+    if (s == null) {
+      return const [
+        PlayerStatCell(label: 'JAPANESE', value: '\u2014'),
+        PlayerStatCell(label: 'MINDFUL', value: '\u2014'),
+        PlayerStatCell(label: 'SOBRIETY', value: '\u2014'),
+        PlayerStatCell(label: 'BUDGET', value: '\u2014'),
+      ];
+    }
 
-  const _Chip({
-    required this.label,
-    required this.value,
-    required this.color,
-    required this.icon,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Icon(icon, color: color, size: 20),
-        const SizedBox(height: 6),
-        Text(
-          value,
-          style: TextStyle(
-            color: color,
-            fontSize: 13,
-            fontWeight: FontWeight.w700,
-            letterSpacing: -0.3,
-          ),
-        ),
-        const SizedBox(height: 3),
-        Text(
-          label,
-          style: const TextStyle(
-            color: RpgColors.textMuted,
-            fontSize: 8,
-            fontWeight: FontWeight.w500,
-            letterSpacing: 1.2,
-          ),
-        ),
-      ],
-    );
+    return [
+      PlayerStatCell(
+        label: 'JAPANESE',
+        value: s.jpMinutes > 0 ? '${s.jpMinutes}m' : '\u2014',
+        valueColor: s.jpMinutes > 0 ? _colorJp : null,
+      ),
+      PlayerStatCell(
+        label: 'MINDFUL',
+        value: s.mindMinutes > 0 ? '${s.mindMinutes}m' : '\u2014',
+        valueColor: s.mindMinutes > 0 ? _colorMind : null,
+      ),
+      PlayerStatCell(
+        label: 'SOBRIETY',
+        value: s.isClean == null
+            ? '\u2014'
+            : (s.isClean! ? 'CLEAN' : 'RELAPSED'),
+        valueColor: s.isClean == null
+            ? null
+            : (s.isClean! ? _colorSober : _colorRelapse),
+        flex: 4,
+      ),
+      PlayerStatCell(
+        label: 'BUDGET',
+        value: s.budgetCents > 0
+            ? '\u20AC${(s.budgetCents / 100).toStringAsFixed(0)}'
+            : '\u2014',
+        valueColor: s.budgetCents > 3000
+            ? _colorRelapse
+            : (s.budgetCents > 0 ? _colorBudget : null),
+      ),
+    ];
   }
 }
