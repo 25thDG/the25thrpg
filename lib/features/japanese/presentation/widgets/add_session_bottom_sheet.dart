@@ -12,6 +12,7 @@ const _categoryColors = {
   SessionCategory.active: Color(0xFF66BB6A),
   SessionCategory.passive: Color(0xFF26A69A),
   SessionCategory.accent: Color(0xFFFFA726),
+  SessionCategory.output: Color(0xFFEC407A),
 };
 
 class AddSessionBottomSheet extends StatefulWidget {

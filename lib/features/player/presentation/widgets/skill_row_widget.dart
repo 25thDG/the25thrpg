@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../domain/entities/skill_summary.dart';
+import 'skill_colors.dart';
 import 'rpg_colors.dart';
 
 /// A single row in the Skills window.
@@ -22,20 +23,9 @@ class SkillRowWidget extends StatelessWidget {
     this.onTap,
   });
 
-  static Color _skillColor(SkillId id) {
-    switch (id) {
-      case SkillId.japanese:
-        return const Color(0xFF4FC3F7);
-      case SkillId.wealth:
-        return const Color(0xFF10B981);
-      case SkillId.mindfulness:
-        return const Color(0xFF26A69A);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    final accentColor = _skillColor(skill.skill);
+    final accentColor = skillColor(skill.skill);
 
     return FadeTransition(
       opacity: animation,

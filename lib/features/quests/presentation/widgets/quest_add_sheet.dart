@@ -36,9 +36,12 @@ class _QuestAddSheetState extends State<QuestAddSheet> {
   final _descController = TextEditingController();
   final _xpController = TextEditingController();
   final _objectiveController = TextEditingController();
+  final _rewardController = TextEditingController();
+  final _rewardCostController = TextEditingController();
 
   QuestDifficulty _difficulty = QuestDifficulty.normal;
   List<_DraftObjective> _objectives = [];
+  DateTime? _targetDate;
 
   @override
   void initState() {
@@ -52,6 +55,11 @@ class _QuestAddSheetState extends State<QuestAddSheet> {
       _objectives = q.objectives
           .map((o) => _DraftObjective(id: o.id, text: o.text, completed: o.completed))
           .toList();
+      _targetDate = q.targetDate;
+      _rewardController.text = q.rewardText ?? '';
+      _rewardCostController.text = q.rewardCostCents != null
+          ? (q.rewardCostCents! / 100).toStringAsFixed(0)
+          : '';
     } else {
       _xpController.text = '${QuestDifficulty.normal.defaultXp}';
     }
@@ -63,7 +71,30 @@ class _QuestAddSheetState extends State<QuestAddSheet> {
     _descController.dispose();
     _xpController.dispose();
     _objectiveController.dispose();
+    _rewardController.dispose();
+    _rewardCostController.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickTargetDate() async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _targetDate ?? now.add(const Duration(days: 90)),
+      firstDate: now,
+      lastDate: now.add(const Duration(days: 365 * 5)),
+      builder: (context, child) => Theme(
+        data: Theme.of(context).copyWith(
+          colorScheme: const ColorScheme.dark(
+            primary: _colorQuest,
+            surface: RpgColors.panelBg,
+            onSurface: RpgColors.textPrimary,
+          ),
+        ),
+        child: child!,
+      ),
+    );
+    if (picked != null) setState(() => _targetDate = picked);
   }
 
   void _onDifficultyChanged(QuestDifficulty d) {
@@ -96,6 +127,9 @@ class _QuestAddSheetState extends State<QuestAddSheet> {
     final objectives = _objectives
         .map((o) => QuestObjective(id: o.id, text: o.text, completed: o.completed))
         .toList();
+    final reward = _rewardController.text.trim();
+    final costEuros = int.tryParse(_rewardCostController.text.trim());
+
     Navigator.pop(
       context,
       QuestFormResult(
@@ -106,6 +140,11 @@ class _QuestAddSheetState extends State<QuestAddSheet> {
         xpReward: xp,
         difficulty: _difficulty,
         objectives: objectives,
+        targetDate: _targetDate,
+        rewardText: reward.isEmpty ? null : reward,
+        // Cost only means something alongside a named reward.
+        rewardCostCents:
+            reward.isEmpty || costEuros == null ? null : costEuros * 100,
       ),
     );
   }
@@ -258,6 +297,81 @@ class _QuestAddSheetState extends State<QuestAddSheet> {
                   ),
                   const SizedBox(height: 20),
 
+                  // Target date — drives the days-left and pace readout
+                  _label('TARGET DATE'),
+                  const SizedBox(height: 10),
+                  GestureDetector(
+                    onTap: _pickTargetDate,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 14),
+                      decoration: BoxDecoration(
+                        color: RpgColors.panelBgAlt,
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(color: RpgColors.border),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.flag_outlined,
+                              size: 16, color: RpgColors.textMuted),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              _targetDate == null
+                                  ? 'No deadline'
+                                  : _fmtDate(_targetDate!),
+                              style: TextStyle(
+                                color: _targetDate == null
+                                    ? RpgColors.textMuted
+                                    : RpgColors.textPrimary,
+                                fontSize: 13,
+                                fontWeight: _targetDate == null
+                                    ? FontWeight.w400
+                                    : FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                          if (_targetDate != null)
+                            GestureDetector(
+                              onTap: () => setState(() => _targetDate = null),
+                              child: const Icon(Icons.close,
+                                  size: 16, color: RpgColors.textMuted),
+                            )
+                          else
+                            const Icon(Icons.chevron_right,
+                                size: 16, color: RpgColors.textMuted),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Real-world reward
+                  _label('REWARD'),
+                  const SizedBox(height: 4),
+                  const Text(
+                    'What you get in real life when this is done. '
+                    'Set the price so it is planned, not a surprise.',
+                    style: TextStyle(
+                      color: RpgColors.textMuted,
+                      fontSize: 10,
+                      height: 1.4,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  _darkField(
+                    controller: _rewardController,
+                    hint: 'e.g. New phone',
+                  ),
+                  const SizedBox(height: 8),
+                  _darkField(
+                    controller: _rewardCostController,
+                    hint: 'Cost in € (optional)',
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  ),
+                  const SizedBox(height: 20),
+
                   // Objectives
                   _label('OBJECTIVES'),
                   const SizedBox(height: 10),
@@ -367,17 +481,29 @@ class _QuestAddSheetState extends State<QuestAddSheet> {
         ),
       );
 
+  static String _fmtDate(DateTime d) {
+    const months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    ];
+    return '${months[d.month - 1]} ${d.day}, ${d.year}';
+  }
+
   Widget _darkField({
     required TextEditingController controller,
     required String hint,
     int maxLines = 1,
     bool autofocus = false,
     void Function(String)? onSubmitted,
+    TextInputType? keyboardType,
+    List<TextInputFormatter>? inputFormatters,
   }) =>
       TextFormField(
         controller: controller,
         autofocus: autofocus,
         maxLines: maxLines,
+        keyboardType: keyboardType,
+        inputFormatters: inputFormatters,
         style: const TextStyle(color: RpgColors.textPrimary, fontSize: 14),
         onFieldSubmitted: onSubmitted,
         decoration: InputDecoration(
@@ -413,6 +539,9 @@ class QuestFormResult {
   final int xpReward;
   final QuestDifficulty difficulty;
   final List<QuestObjective> objectives;
+  final DateTime? targetDate;
+  final String? rewardText;
+  final int? rewardCostCents;
 
   const QuestFormResult({
     required this.title,
@@ -420,5 +549,8 @@ class QuestFormResult {
     required this.xpReward,
     required this.difficulty,
     required this.objectives,
+    this.targetDate,
+    this.rewardText,
+    this.rewardCostCents,
   });
 }

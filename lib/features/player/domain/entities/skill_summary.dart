@@ -2,10 +2,36 @@ import 'dart:math';
 
 const _masteryWeight = 0.25;
 
+// ── Mindfulness tuning ────────────────────────────────────────────────────────
+
+/// Meditation minutes for level 100. Sessions run ~6 min, so the old 10,000
+/// target was unreachable and kept the skill pinned at a low level.
+const _mindfulnessTargetMinutes = 2000;
+
+/// Meditation minutes per mastery point beyond the target.
+const _mindfulnessMasteryStep = 200;
+
+/// Clean (addiction-free) days needed per level point.
+const _cleanDaysPerLevelPoint = 10;
+
+/// Ceiling on the sobriety bonus, so discipline is worth a lot but meditation
+/// still carries most of the skill.
+const _maxCleanDayBonus = 30.0;
+
+// ── Resolve tuning ────────────────────────────────────────────────────────────
+
+/// Completed-quest XP for level 100. At 1,000 XP for a legendary quest this is
+/// roughly twenty of the hardest things you will ever commit to.
+const _resolveTargetXp = 20000;
+
+/// Quest XP per mastery point beyond the target.
+const _resolveMasteryStep = 2000;
+
 enum SkillId {
   japanese,
   wealth,
   mindfulness,
+  resolve,
 }
 
 extension SkillIdX on SkillId {
@@ -17,6 +43,8 @@ extension SkillIdX on SkillId {
         return 'WEALTH';
       case SkillId.mindfulness:
         return 'MINDFULNESS';
+      case SkillId.resolve:
+        return 'RESOLVE';
     }
   }
 
@@ -28,6 +56,8 @@ extension SkillIdX on SkillId {
         return 'Financial Power';
       case SkillId.mindfulness:
         return 'Inner Discipline';
+      case SkillId.resolve:
+        return 'Sworn Oaths';
     }
   }
 
@@ -38,6 +68,8 @@ extension SkillIdX on SkillId {
       case SkillId.wealth:
         return 1.2;
       case SkillId.mindfulness:
+        return 1.0;
+      case SkillId.resolve:
         return 1.0;
     }
   }
@@ -53,10 +85,31 @@ class SkillSummary {
   // ── Time-based (japanese, mindfulness) ────────────────────────────────────
   final int lifetimeMinutes;
   final int last30DaysMinutes;
+  final int last7DaysMinutes;
 
-  /// Minutes logged since the daily-average tracking start date (2026-04-11).
-  /// For mindfulness, addiction sessions are excluded.
-  final int minutesSinceTracking;
+  // ── Mindfulness: sobriety tracking ────────────────────────────────────────
+
+  /// Consecutive clean days ending today (or yesterday if today is unlogged).
+  final int cleanStreak;
+
+  /// Longest clean streak ever logged.
+  final int longestCleanStreak;
+
+  /// Days logged clean, and days logged as a relapse.
+  final int cleanDays;
+  final int relapseDays;
+
+  /// Days since the most recent sobriety entry. Null when nothing is logged.
+  final int? daysSinceLastCleanLog;
+
+  // ── Resolve: quests ───────────────────────────────────────────────────────
+
+  /// Total XP from completed quests.
+  final int questXp;
+
+  /// How many quests are finished and still open, for the skill row subtitle.
+  final int questsCompleted;
+  final int questsActive;
 
   // ── Wealth: current net worth (€) ─────────────────────────────────────────
   final double currentNetWorthEur;
@@ -69,7 +122,15 @@ class SkillSummary {
     required this.skill,
     this.lifetimeMinutes = 0,
     this.last30DaysMinutes = 0,
-    this.minutesSinceTracking = 0,
+    this.last7DaysMinutes = 0,
+    this.cleanStreak = 0,
+    this.longestCleanStreak = 0,
+    this.cleanDays = 0,
+    this.relapseDays = 0,
+    this.daysSinceLastCleanLog,
+    this.questXp = 0,
+    this.questsCompleted = 0,
+    this.questsActive = 0,
     this.currentNetWorthEur = 0.0,
     this.monthlyGrowthEur,
   });
@@ -80,6 +141,8 @@ class SkillSummary {
     switch (skill) {
       case SkillId.wealth:
         return currentNetWorthEur > 0;
+      case SkillId.resolve:
+        return questsActive > 0;
       default:
         return last30DaysMinutes > 0;
     }
@@ -99,9 +162,24 @@ class SkillSummary {
         return sqrt(currentNetWorthEur / 1_000_000) * 100;
 
       case SkillId.mindfulness:
-        // Sqrt. 10,000 min (~167h) → 100
-        return sqrt(lifetimeMinutes.toDouble()) / sqrt(10_000) * 100;
+        // Sqrt on meditation minutes, plus a bonus for clean days.
+        // 2,000 min (~33h) → 100, +1 level per 10 clean days (max +30).
+        final base = sqrt(lifetimeMinutes.toDouble()) /
+            sqrt(_mindfulnessTargetMinutes) *
+            100;
+        return base + cleanDayBonus;
+
+      case SkillId.resolve:
+        // Sqrt on completed-quest XP. 20,000 XP → 100.
+        return sqrt(questXp.toDouble()) / sqrt(_resolveTargetXp) * 100;
     }
+  }
+
+  /// Level points earned from staying clean. Mindfulness only.
+  double get cleanDayBonus {
+    if (skill != SkillId.mindfulness) return 0;
+    final bonus = cleanDays / _cleanDaysPerLevelPoint;
+    return bonus.clamp(0.0, _maxCleanDayBonus);
   }
 
   // ── Level (1–100) ──────────────────────────────────────────────────────────
@@ -122,8 +200,15 @@ class SkillSummary {
         return ((currentNetWorthEur - 1_000_000) / 250_000).floor();
 
       case SkillId.mindfulness:
-        if (lifetimeMinutes <= 10_000) return 0;
-        return ((lifetimeMinutes - 10_000) / 1_000).floor();
+        // Mastery tracks meditation only — the clean-day bonus does not count.
+        if (lifetimeMinutes <= _mindfulnessTargetMinutes) return 0;
+        return ((lifetimeMinutes - _mindfulnessTargetMinutes) /
+                _mindfulnessMasteryStep)
+            .floor();
+
+      case SkillId.resolve:
+        if (questXp <= _resolveTargetXp) return 0;
+        return ((questXp - _resolveTargetXp) / _resolveMasteryStep).floor();
     }
   }
 
@@ -156,8 +241,15 @@ class SkillSummary {
         return _fmtEur(remaining);
 
       case SkillId.mindfulness:
-        final neededMin = pow(targetLevel / 100.0, 2) * 10_000;
+        // Clean days already cover part of the target level.
+        final fromMeditation = (targetLevel - cleanDayBonus).clamp(0.0, 100.0);
+        final neededMin =
+            pow(fromMeditation / 100.0, 2) * _mindfulnessTargetMinutes;
         return _fmtTime((neededMin - lifetimeMinutes) / 60.0);
+
+      case SkillId.resolve:
+        final needed = pow(targetLevel / 100.0, 2) * _resolveTargetXp;
+        return '${(needed - questXp).ceil()} XP';
     }
   }
 
@@ -170,8 +262,14 @@ class SkillSummary {
         final excess = currentNetWorthEur - 1_000_000;
         return _fmtEur((250_000 - (excess % 250_000)).ceil());
       case SkillId.mindfulness:
-        final excessMin = lifetimeMinutes - 10_000;
-        return _fmtTime((1_000 - (excessMin % 1_000)) / 60.0);
+        final excessMin = lifetimeMinutes - _mindfulnessTargetMinutes;
+        return _fmtTime(
+          (_mindfulnessMasteryStep - (excessMin % _mindfulnessMasteryStep)) /
+              60.0,
+        );
+      case SkillId.resolve:
+        final excessXp = questXp - _resolveTargetXp;
+        return '${_resolveMasteryStep - (excessXp % _resolveMasteryStep)} XP';
     }
   }
 
@@ -211,8 +309,14 @@ class SkillSummary {
         if (currentNetWorthEur < 1_000_000) return 0.0;
         return ((currentNetWorthEur - 1_000_000) % 250_000) / 250_000.0;
       case SkillId.mindfulness:
-        if (lifetimeMinutes <= 10_000) return 0.0;
-        return ((lifetimeMinutes - 10_000) % 1_000) / 1_000.0;
+        if (lifetimeMinutes <= _mindfulnessTargetMinutes) return 0.0;
+        return ((lifetimeMinutes - _mindfulnessTargetMinutes) %
+                _mindfulnessMasteryStep) /
+            _mindfulnessMasteryStep;
+      case SkillId.resolve:
+        if (questXp <= _resolveTargetXp) return 0.0;
+        return ((questXp - _resolveTargetXp) % _resolveMasteryStep) /
+            _resolveMasteryStep;
     }
   }
 
@@ -281,20 +385,81 @@ class SkillSummary {
         final needed = 1_000_000.0 + targetMastery * 250_000.0;
         return _fmtEur((needed - currentNetWorthEur).ceil());
       case SkillId.mindfulness:
-        final needed = 10_000.0 + targetMastery * 1_000.0;
+        final needed = _mindfulnessTargetMinutes +
+            targetMastery * _mindfulnessMasteryStep.toDouble();
         return _fmtTime((needed - lifetimeMinutes) / 60.0);
+      case SkillId.resolve:
+        final needed = _resolveTargetXp + targetMastery * _resolveMasteryStep;
+        return '${needed - questXp} XP';
     }
   }
 
-  // ── Daily average (time-based skills only) ─────────────────────────────────
+  // ── Recent pace (time-based skills only) ──────────────────────────────────
 
-  static final _trackingStart = DateTime(2026, 4, 11);
+  /// Average minutes per day over the last 7 days.
+  double get avg7PerDay => last7DaysMinutes / 7.0;
 
-  /// Average minutes per day since tracking start. Returns 0 for wealth.
-  double get dailyAverageMinutes {
-    if (skill == SkillId.wealth) return 0;
-    final days = DateTime.now().difference(_trackingStart).inDays + 1;
-    return minutesSinceTracking / days.clamp(1, 9999);
+  /// Average minutes per day over the last 30 days.
+  double get avg30PerDay => last30DaysMinutes / 30.0;
+
+  /// How much the last week beats (or trails) the last month, in min/day.
+  /// Positive = speeding up, negative = slowing down.
+  double get paceDeltaPerDay => avg7PerDay - avg30PerDay;
+
+  /// True when there is not enough recent data to call a trend either way.
+  bool get hasPaceData => last30DaysMinutes > 0 || last7DaysMinutes > 0;
+
+  // ── Sobriety ──────────────────────────────────────────────────────────────
+
+  /// Days with a sobriety entry (clean or relapse).
+  int get loggedCleanDays => cleanDays + relapseDays;
+
+  /// Share of logged days that stayed clean (0–1).
+  double get cleanRate =>
+      loggedCleanDays == 0 ? 0.0 : cleanDays / loggedCleanDays;
+
+  /// True when logging has lapsed, so a zero streak means "unknown" rather
+  /// than "you relapsed".
+  bool get isCleanLogStale => (daysSinceLastCleanLog ?? 0) > 1;
+
+  // ── ETA to the next level ─────────────────────────────────────────────────
+
+  /// The level being worked toward. Caps at 101 (first mastery point).
+  int get nextLevel => (_rawLevel.floor() + 1).clamp(2, 101);
+
+  /// Practice minutes still needed for [nextLevel].
+  /// Null for wealth (measured in €) and once the skill is maxed.
+  double? get minutesToNextLevel {
+    final raw = _rawLevel;
+    if (raw >= 100) return null;
+    final target = raw.floor() + 1;
+
+    switch (skill) {
+      case SkillId.wealth:
+      case SkillId.resolve:
+        return null;
+
+      case SkillId.japanese:
+        final neededHours = pow(target / 100.0, 2) * 2200;
+        return max(0.0, (neededHours - _hours) * 60);
+
+      case SkillId.mindfulness:
+        // Clean days already cover part of the target level.
+        final fromMeditation = (target - cleanDayBonus).clamp(0.0, 100.0);
+        final neededMin =
+            pow(fromMeditation / 100.0, 2) * _mindfulnessTargetMinutes;
+        return max(0.0, (neededMin - lifetimeMinutes).toDouble());
+    }
+  }
+
+  /// Days until [nextLevel] at the last-30-day pace.
+  /// Null when the skill is maxed, measured in €, or has no recent pace.
+  int? get daysToNextLevel {
+    final remaining = minutesToNextLevel;
+    if (remaining == null || remaining <= 0) return null;
+    final pace = avg30PerDay;
+    if (pace <= 0) return null;
+    return (remaining / pace).ceil();
   }
 
   // ── Wealth projection ──────────────────────────────────────────────────────

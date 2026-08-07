@@ -2,6 +2,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../../core/error/app_exception.dart';
 import '../../domain/entities/quest.dart';
+import '../../domain/repositories/quest_repository.dart';
 import '../models/quest_model.dart';
 
 const _userId = '1a67d50e-4263-4923-b4bc-1bfa57426aae';
@@ -23,23 +24,20 @@ class QuestSupabaseDatasource {
     }
   }
 
-  Future<QuestModel> addQuest({
-    required String title,
-    String? description,
-    required int xpReward,
-    required QuestDifficulty difficulty,
-    required List<QuestObjective> objectives,
-  }) async {
+  Future<QuestModel> addQuest(QuestDraft draft) async {
     try {
       final model = QuestModel(
         id: '',
-        title: title,
-        description: description,
-        xpReward: xpReward,
-        difficulty: difficulty,
+        title: draft.title,
+        description: draft.description,
+        xpReward: draft.xpReward,
+        difficulty: draft.difficulty,
         status: QuestStatus.active,
-        objectives: objectives,
+        objectives: draft.objectives,
         createdAt: DateTime.now(),
+        targetDate: draft.targetDate,
+        rewardText: draft.rewardText,
+        rewardCostCents: draft.rewardCostCents,
       );
       final row = await _client
           .from('quests')
@@ -52,32 +50,27 @@ class QuestSupabaseDatasource {
     }
   }
 
-  Future<QuestModel> updateQuest({
-    required String id,
-    required String title,
-    String? description,
-    required int xpReward,
-    required QuestDifficulty difficulty,
-    required QuestStatus status,
-    required List<QuestObjective> objectives,
-    DateTime? completedAt,
-  }) async {
+  Future<QuestModel> updateQuest(Quest quest) async {
     try {
       final model = QuestModel(
-        id: id,
-        title: title,
-        description: description,
-        xpReward: xpReward,
-        difficulty: difficulty,
-        status: status,
-        objectives: objectives,
-        completedAt: completedAt,
-        createdAt: DateTime.now(),
+        id: quest.id,
+        title: quest.title,
+        description: quest.description,
+        xpReward: quest.xpReward,
+        difficulty: quest.difficulty,
+        status: quest.status,
+        objectives: quest.objectives,
+        completedAt: quest.completedAt,
+        createdAt: quest.createdAt,
+        targetDate: quest.targetDate,
+        rewardText: quest.rewardText,
+        rewardCostCents: quest.rewardCostCents,
+        rewardClaimedAt: quest.rewardClaimedAt,
       );
       final row = await _client
           .from('quests')
           .update(model.toUpdateMap())
-          .eq('id', id)
+          .eq('id', quest.id)
           .select()
           .single();
       return QuestModel.fromMap(row);

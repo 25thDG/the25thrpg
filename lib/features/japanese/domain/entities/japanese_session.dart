@@ -3,7 +3,8 @@ enum SessionCategory {
   reading,
   active,
   passive,
-  accent;
+  accent,
+  output;
 
   String get displayName {
     switch (this) {
@@ -12,13 +13,18 @@ enum SessionCategory {
       case SessionCategory.reading:
         return 'Reading';
       case SessionCategory.active:
-        return 'Active';
+        return 'Active Listening';
       case SessionCategory.passive:
         return 'Passive';
       case SessionCategory.accent:
         return 'Accent';
+      case SessionCategory.output:
+        return 'Output';
     }
   }
+
+  /// Output = producing Japanese yourself (speaking). Everything else is input.
+  bool get isOutput => this == SessionCategory.output;
 
   static SessionCategory fromString(String value) {
     return SessionCategory.values.firstWhere(

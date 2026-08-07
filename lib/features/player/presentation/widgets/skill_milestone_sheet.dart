@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../domain/entities/skill_summary.dart';
+import 'skill_colors.dart';
 import 'rpg_colors.dart';
 
 void showSkillMilestoneSheet(BuildContext context, SkillSummary skill) {
@@ -10,19 +11,6 @@ void showSkillMilestoneSheet(BuildContext context, SkillSummary skill) {
     isScrollControlled: true,
     builder: (_) => _MilestoneSheet(skill: skill),
   );
-}
-
-// ── Color mapping ─────────────────────────────────────────────────────────────
-
-Color _skillColor(SkillId id) {
-  switch (id) {
-    case SkillId.japanese:
-      return const Color(0xFF4FC3F7);
-    case SkillId.wealth:
-      return const Color(0xFF10B981);
-    case SkillId.mindfulness:
-      return const Color(0xFF26A69A);
-  }
 }
 
 // ── Sheet root ────────────────────────────────────────────────────────────────
@@ -70,7 +58,7 @@ class _MilestoneSheetState extends State<_MilestoneSheet>
 
   @override
   Widget build(BuildContext context) {
-    final color = _skillColor(widget.skill.skill);
+    final color = skillColor(widget.skill.skill);
     final milestones = widget.skill.nextLevelMilestones();
     final bottomPad = MediaQuery.of(context).padding.bottom;
 

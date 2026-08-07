@@ -35,15 +35,22 @@ Every skill follows the pattern: `level = sqrt(input) / sqrt(target) × 100`, ca
 - **Note**: Only skill not based on time. Uses latest monthly net worth snapshot.
 
 ### Mindfulness
-- **Formula**: `sqrt(minutes) / sqrt(10,000) × 100`
-- **Milestones**: Lv 10 ≈ 100 min, Lv 25 ≈ 625 min, Lv 50 ≈ 2,500 min (~42h), Lv 100 = 10,000 min (~167h)
-- **Note**: Fastest skill to max — only needs 167 hours.
+- **Formula**: `sqrt(minutes) / sqrt(2000) × 100 + min(cleanDays / 10, 30)`
+- **Milestones** (meditation only): Lv 25 ≈ 125 min, Lv 50 = 500 min, Lv 100 = 2,000 min (~33h)
+- **Sobriety bonus**: +1 level per 10 clean days, capped at +30
+- **Note**: Sessions run ~6 min, so the target is 2,000 min rather than 10,000. Staying clean is worth up to 30 levels on its own; mastery still tracks meditation only.
 
 ### Sport
 - **Formula**: `sqrt(hours) / sqrt(2000) × 100 + 10 × (trainedDays / 30)`
 - **Consistency bonus**: Up to +10 levels for training every day in the last 30 days
 - **Milestones** (without bonus): Lv 10 ≈ 20h, Lv 50 ≈ 500h, Lv 100 ≈ 2,000h
 - **With max consistency**: Level 100 achievable at ~1,620h
+
+### Resolve
+- **Formula**: `sqrt(questXp) / sqrt(20,000) × 100`
+- **XP per quest**: Side 50, Normal 150, Epic 400, Legendary 1,000
+- **Milestones**: Lv 14 ≈ one epic quest, Lv 50 = 5,000 XP, Lv 100 = 20,000 XP
+- **Note**: Only *completed* quests count. This is what makes a finished quest move your Player Level — previously quest XP fed nothing.
 
 ### Social
 - **Formula**: `sqrt(hours) / sqrt(750) × 100`
@@ -65,7 +72,8 @@ Once a skill hits level 100, you start earning **mastery points**. Mastery requi
 |---|---|
 | Japanese | +1 mastery per 200h beyond 2,200h |
 | Wealth | +1 mastery per €250,000 beyond €1M |
-| Mindfulness | +1 mastery per 1,000 min beyond 10,000 min |
+| Mindfulness | +1 mastery per 200 min beyond 2,000 min |
+| Resolve | +1 mastery per 2,000 XP beyond 20,000 XP |
 | Sport | +1 mastery per 150h beyond 2,000h |
 | Social | +1 mastery per 100h beyond 750h |
 | Creation | +1 mastery per 100h beyond 1,000h |
@@ -101,17 +109,23 @@ Active skills show a red progress bar, dormant skills show a grey bar.
 
 ### Player Tab
 - **Player Level Panel** — Overall level, XP progress bar, top skill, active count, total mastery
-- **Skill Radar Chart** — Hexagonal radar showing all 6 skills relative to each other (animated)
+- **Insights Panel** — four rows, all based on recent activity rather than lifetime averages:
+  - *Japanese* — last-7-day daily average with a ▲/▼ badge against the 30-day average
+  - *Next level* — days to the next Japanese level at the 30-day pace
+  - *Sobriety* — current clean streak, clean rate, and best streak; shows `—` when logging has lapsed
+  - *Wealth* — estimated time to €1,000,000
+- **Daily Reminder** — bell icon in the app bar; one repeating local notification at a chosen time. Off by default; the bell fills in when armed.
+- **Skill Radar Chart** — Radar over the 4 live skills (Japanese, Wealth, Mindfulness, Resolve). The axis **auto-zooms** to the next multiple of 10 above the best skill (shown as `EDGE = Lv n`) and scales linearly, so level gaps read at their true size instead of being flattened by a 0–100 axis.
 - **Skills Window** — Detailed rows per skill with level, mastery, progress bar, and hours remaining to next level
 
 ### Japanese Tab
 - Lifetime hours vs 2,200h horizon
 - Last 30 days + best 30-day period
-- Category breakdown (reading, writing, speaking, etc.)
+- Category breakdown — vocab, reading, active listening, passive, accent, output (speaking)
 - Today's sessions — add, edit, delete
 
 ### Mindfulness Tab
-- Lifetime minutes vs 10,000 min horizon
+- Lifetime minutes vs 2,000 min horizon
 - Category breakdown by meditation type
 - Last 30 days + best 30-day window
 - Today's sessions — add, edit, delete
@@ -132,6 +146,14 @@ Active skills show a red progress bar, dormant skills show a grey bar.
 - Last 30 days + best 30-day window
 - **Projects section** — Create, edit, complete, delete projects (each with difficulty 1–5)
 - Today's sessions — log general time or time to specific projects
+
+### Quests Tab
+- **Quest log** — active and completed quests, XP totals, legendary count
+- **Difficulty** — Side / Normal / Epic / Legendary, each with a default XP value
+- **Objectives** — manual milestones you tick off yourself
+- **Target date** — optional deadline; the card shows days left and an ON PACE / BEHIND PACE / OVERDUE verdict comparing milestones ticked against time spent
+- **Reward** — a real-world prize with an optional price. Locked while the quest is open, `READY TO CLAIM` once completed, struck through once claimed. Pricing it up front keeps it a planned expense instead of a surprise hit to net worth (and to the spending quest)
+- Completing a quest feeds the **Resolve** skill and therefore your Player Level
 
 ### Wealth Tab
 - Current net worth display

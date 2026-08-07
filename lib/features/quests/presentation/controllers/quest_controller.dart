@@ -5,6 +5,7 @@ import '../../application/use_cases/delete_quest_use_case.dart';
 import '../../application/use_cases/get_quests_use_case.dart';
 import '../../application/use_cases/update_quest_use_case.dart';
 import '../../domain/entities/quest.dart';
+import '../../domain/repositories/quest_repository.dart';
 import '../state/quest_state.dart';
 
 class QuestController extends ChangeNotifier {
@@ -42,22 +43,10 @@ class QuestController extends ChangeNotifier {
     }
   }
 
-  Future<String?> addQuest({
-    required String title,
-    String? description,
-    required int xpReward,
-    required QuestDifficulty difficulty,
-    required List<QuestObjective> objectives,
-  }) async {
+  Future<String?> addQuest(QuestDraft draft) async {
     _emit(_state.copyWith(isMutating: true));
     try {
-      await _addQuest(
-        title: title,
-        description: description,
-        xpReward: xpReward,
-        difficulty: difficulty,
-        objectives: objectives,
-      );
+      await _addQuest(draft);
       await load();
       return null;
     } catch (e) {
@@ -69,16 +58,7 @@ class QuestController extends ChangeNotifier {
   Future<String?> updateQuest(Quest quest) async {
     _emit(_state.copyWith(isMutating: true));
     try {
-      await _updateQuest(
-        id: quest.id,
-        title: quest.title,
-        description: quest.description,
-        xpReward: quest.xpReward,
-        difficulty: quest.difficulty,
-        status: quest.status,
-        objectives: quest.objectives,
-        completedAt: quest.completedAt,
-      );
+      await _updateQuest(quest);
       await load();
       return null;
     } catch (e) {
@@ -94,11 +74,19 @@ class QuestController extends ChangeNotifier {
     ));
   }
 
+  /// Reopening also drops the completion timestamp and un-claims the reward,
+  /// so an unfinished quest can never look like it already paid out.
   Future<String?> reopenQuest(Quest quest) async {
     return updateQuest(quest.copyWith(
       status: QuestStatus.active,
       completedAt: null,
+      rewardClaimedAt: null,
     ));
+  }
+
+  /// Marks the real-world prize as collected.
+  Future<String?> claimReward(Quest quest) async {
+    return updateQuest(quest.copyWith(rewardClaimedAt: DateTime.now()));
   }
 
   Future<String?> toggleObjective(Quest quest, String objectiveId) async {

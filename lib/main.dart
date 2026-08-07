@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'core/notifications/reminder_service.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/rpg_colors.dart';
 import 'features/budget/presentation/pages/budget_page.dart';
@@ -17,6 +18,11 @@ Future<void> main() async {
     url: 'https://ujwiflvjioyjneczeoyi.supabase.co',
     anonKey: 'sb_publishable_AXfZD4pfX3Y2BS8e2U-Wcg_GbzngalT',
   );
+
+  // Never let a notification problem stop the app from starting.
+  try {
+    await ReminderService.instance.init();
+  } catch (_) {}
 
   runApp(const App());
 }

@@ -9,6 +9,7 @@ import '../../application/use_cases/update_quest_use_case.dart';
 import '../../data/datasources/quest_supabase_datasource.dart';
 import '../../data/repositories/quest_repository_impl.dart';
 import '../../domain/entities/quest.dart';
+import '../../domain/repositories/quest_repository.dart';
 import '../controllers/quest_controller.dart';
 import '../state/quest_state.dart';
 import '../widgets/quest_add_sheet.dart';
@@ -57,11 +58,16 @@ class _QuestsPageState extends State<QuestsPage> {
     final result = await QuestAddSheet.show(context);
     if (result == null || !context.mounted) return;
     final error = await _controller.addQuest(
-      title: result.title,
-      description: result.description,
-      xpReward: result.xpReward,
-      difficulty: result.difficulty,
-      objectives: result.objectives,
+      QuestDraft(
+        title: result.title,
+        description: result.description,
+        xpReward: result.xpReward,
+        difficulty: result.difficulty,
+        objectives: result.objectives,
+        targetDate: result.targetDate,
+        rewardText: result.rewardText,
+        rewardCostCents: result.rewardCostCents,
+      ),
     );
     if (error != null && context.mounted) _showError(error);
   }
@@ -76,8 +82,16 @@ class _QuestsPageState extends State<QuestsPage> {
         xpReward: result.xpReward,
         difficulty: result.difficulty,
         objectives: result.objectives,
+        targetDate: result.targetDate,
+        rewardText: result.rewardText,
+        rewardCostCents: result.rewardCostCents,
       ),
     );
+    if (error != null && context.mounted) _showError(error);
+  }
+
+  Future<void> _handleClaimReward(Quest quest) async {
+    final error = await _controller.claimReward(quest);
     if (error != null && context.mounted) _showError(error);
   }
 
@@ -258,6 +272,7 @@ class _QuestsPageState extends State<QuestsPage> {
                   onEdit: _handleEdit,
                   onComplete: _handleComplete,
                   onDelete: _handleDelete,
+                  onClaimReward: _handleClaimReward,
                   onToggleObjective: _handleToggleObjective,
                 ),
                 if (state.completedQuests.isNotEmpty) ...[
@@ -285,6 +300,7 @@ class _ActiveQuestsPanel extends StatelessWidget {
   final Future<void> Function(Quest) onEdit;
   final Future<void> Function(Quest) onComplete;
   final Future<void> Function(Quest) onDelete;
+  final Future<void> Function(Quest) onClaimReward;
   final Future<void> Function(Quest, String) onToggleObjective;
 
   const _ActiveQuestsPanel({
@@ -293,6 +309,7 @@ class _ActiveQuestsPanel extends StatelessWidget {
     required this.onEdit,
     required this.onComplete,
     required this.onDelete,
+    required this.onClaimReward,
     required this.onToggleObjective,
   });
 
@@ -349,6 +366,7 @@ class _ActiveQuestsPanel extends StatelessWidget {
                       onTap: () => onEdit(q),
                       onComplete: () => onComplete(q),
                       onDelete: () => onDelete(q),
+                      onClaimReward: () => onClaimReward(q),
                       onToggleObjective: (id) => onToggleObjective(q, id),
                     )),
                 GestureDetector(
@@ -394,6 +412,7 @@ class _ActiveQuestCard extends StatefulWidget {
   final VoidCallback onTap;
   final VoidCallback onComplete;
   final VoidCallback onDelete;
+  final VoidCallback onClaimReward;
   final Future<void> Function(String objectiveId) onToggleObjective;
 
   const _ActiveQuestCard({
@@ -401,6 +420,7 @@ class _ActiveQuestCard extends StatefulWidget {
     required this.onTap,
     required this.onComplete,
     required this.onDelete,
+    required this.onClaimReward,
     required this.onToggleObjective,
   });
 
@@ -489,6 +509,10 @@ class _ActiveQuestCardState extends State<_ActiveQuestCard> {
                                 ),
                               ),
                             ),
+                            if (q.daysLeft != null) ...[
+                              const SizedBox(width: 6),
+                              _DeadlineChip(quest: q),
+                            ],
                           ],
                         ),
                         const SizedBox(height: 5),
@@ -541,6 +565,14 @@ class _ActiveQuestCardState extends State<_ActiveQuestCard> {
                               ),
                             ],
                           ),
+                        ],
+                        if (q.pace != QuestPace.unknown) ...[
+                          const SizedBox(height: 6),
+                          _PaceLine(quest: q),
+                        ],
+                        if (q.hasReward) ...[
+                          const SizedBox(height: 8),
+                          _RewardStrip(quest: q, onClaim: widget.onClaimReward),
                         ],
                       ],
                     ),
@@ -790,6 +822,219 @@ class _CompletedQuestsPanelState extends State<_CompletedQuestsPanel> {
                     ),
                   );
                 }).toList(),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// Days remaining until the quest's target date, or how far past it we are.
+class _DeadlineChip extends StatelessWidget {
+  final Quest quest;
+
+  const _DeadlineChip({required this.quest});
+
+  @override
+  Widget build(BuildContext context) {
+    final left = quest.daysLeft!;
+    final overdue = left < 0;
+    final urgent = !overdue && left <= 14;
+    final color = overdue
+        ? const Color(0xFFEF5350)
+        : (urgent ? _colorQuest : RpgColors.textMuted);
+
+    final label = switch (left) {
+      < 0 => '${-left}d OVER',
+      0 => 'DUE TODAY',
+      _ => '${_fmtDays(left)} LEFT',
+    };
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(3),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: color,
+          fontSize: 8,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.6,
+        ),
+      ),
+    );
+  }
+
+  static String _fmtDays(int days) {
+    if (days < 60) return '${days}d';
+    if (days < 365) return '${(days / 30).round()}mo';
+    return '${(days / 365).toStringAsFixed(1)}y';
+  }
+}
+
+/// Milestone progress measured against time spent, so a quest that is quietly
+/// falling behind says so instead of just showing a part-filled bar.
+class _PaceLine extends StatelessWidget {
+  final Quest quest;
+
+  const _PaceLine({required this.quest});
+
+  @override
+  Widget build(BuildContext context) {
+    final (label, color) = switch (quest.pace) {
+      QuestPace.onTrack => ('ON PACE', const Color(0xFF66BB6A)),
+      QuestPace.behind => ('BEHIND PACE', _colorQuest),
+      QuestPace.overdue => ('OVERDUE', const Color(0xFFEF5350)),
+      QuestPace.unknown => ('', RpgColors.textMuted),
+    };
+    if (label.isEmpty) return const SizedBox.shrink();
+
+    final elapsed = quest.timeElapsedFraction;
+    final done = quest.objectiveFraction;
+
+    return Row(
+      children: [
+        Icon(
+          quest.pace == QuestPace.onTrack
+              ? Icons.trending_up
+              : Icons.trending_down,
+          size: 11,
+          color: color,
+        ),
+        const SizedBox(width: 5),
+        Text(
+          label,
+          style: TextStyle(
+            color: color,
+            fontSize: 9,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.8,
+          ),
+        ),
+        if (elapsed != null && done != null) ...[
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              '${(done * 100).round()}% done · ${(elapsed * 100).round()}% of time used',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: RpgColors.textMuted,
+                fontSize: 9,
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+/// The real-world prize: locked while the quest is open, claimable once it is
+/// done, and stamped once collected.
+class _RewardStrip extends StatelessWidget {
+  final Quest quest;
+  final VoidCallback onClaim;
+
+  const _RewardStrip({required this.quest, required this.onClaim});
+
+  @override
+  Widget build(BuildContext context) {
+    final claimable = quest.isRewardClaimable;
+    final claimed = quest.isRewardClaimed;
+    final color = claimed
+        ? RpgColors.textMuted
+        : (claimable ? const Color(0xFF66BB6A) : _colorQuest);
+
+    final cost = quest.rewardCostCents;
+    final costLabel = cost == null ? null : '€${(cost / 100).round()}';
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: claimable ? 0.14 : 0.07),
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            claimed
+                ? Icons.check_circle
+                : (claimable ? Icons.card_giftcard : Icons.lock_outline),
+            size: 13,
+            color: color,
+          ),
+          const SizedBox(width: 7),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  quest.rewardText!,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: claimed ? RpgColors.textMuted : RpgColors.textPrimary,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    decoration: claimed ? TextDecoration.lineThrough : null,
+                    decorationColor: RpgColors.textMuted,
+                  ),
+                ),
+                Text(
+                  claimed
+                      ? 'CLAIMED'
+                      : (claimable
+                          ? 'READY TO CLAIM'
+                          : 'LOCKED${costLabel == null ? '' : ' · $costLabel to plan for'}'),
+                  style: TextStyle(
+                    color: color,
+                    fontSize: 8,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.8,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (costLabel != null && !claimed) ...[
+            const SizedBox(width: 6),
+            Text(
+              costLabel,
+              style: TextStyle(
+                color: color,
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+          if (claimable) ...[
+            const SizedBox(width: 8),
+            GestureDetector(
+              onTap: onClaim,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(3),
+                  border: Border.all(color: color.withValues(alpha: 0.5)),
+                ),
+                child: Text(
+                  'CLAIM',
+                  style: TextStyle(
+                    color: color,
+                    fontSize: 9,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 1.0,
+                  ),
+                ),
               ),
             ),
           ],

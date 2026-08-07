@@ -10,19 +10,22 @@ class PlayerRepositoryImpl implements PlayerRepository {
 
   @override
   Future<PlayerStats> getPlayerStats() async {
-    final (japanese, mindfulness, wealth, streak) = await (
+    final (japanese, mindfulness, wealth, resolve, streak) = await (
       _datasource.getJapaneseData(),
       _datasource.getMindfulnessData(),
       _datasource.getWealthData(),
+      _datasource.getResolveData(),
       _datasource.getGlobalStreak(),
     ).wait;
+
+    final (meditation, sobriety) = mindfulness;
 
     final skills = [
       SkillSummary(
         skill: SkillId.japanese,
         lifetimeMinutes: japanese.lifetimeMinutes,
         last30DaysMinutes: japanese.last30DaysMinutes,
-        minutesSinceTracking: japanese.minutesSinceTracking,
+        last7DaysMinutes: japanese.last7DaysMinutes,
       ),
       SkillSummary(
         skill: SkillId.wealth,
@@ -31,9 +34,20 @@ class PlayerRepositoryImpl implements PlayerRepository {
       ),
       SkillSummary(
         skill: SkillId.mindfulness,
-        lifetimeMinutes: mindfulness.lifetimeMinutes,
-        last30DaysMinutes: mindfulness.last30DaysMinutes,
-        minutesSinceTracking: mindfulness.minutesSinceTracking,
+        lifetimeMinutes: meditation.lifetimeMinutes,
+        last30DaysMinutes: meditation.last30DaysMinutes,
+        last7DaysMinutes: meditation.last7DaysMinutes,
+        cleanStreak: sobriety.currentStreak,
+        longestCleanStreak: sobriety.longestStreak,
+        cleanDays: sobriety.cleanDays,
+        relapseDays: sobriety.relapseDays,
+        daysSinceLastCleanLog: sobriety.daysSinceLastLog,
+      ),
+      SkillSummary(
+        skill: SkillId.resolve,
+        questXp: resolve.questXp,
+        questsCompleted: resolve.questsCompleted,
+        questsActive: resolve.questsActive,
       ),
     ];
 

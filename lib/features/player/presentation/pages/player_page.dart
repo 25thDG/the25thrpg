@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../../core/notifications/reminder_service.dart';
+import '../../../../core/notifications/reminder_settings_sheet.dart';
 import '../../application/use_cases/get_player_stats_use_case.dart';
 import '../../data/datasources/player_supabase_datasource.dart';
 import '../../data/repositories/player_repository_impl.dart';
@@ -63,6 +65,22 @@ class _PlayerPageState extends State<PlayerPage> {
         ),
         centerTitle: false,
         actions: [
+          // Bell fills in when a daily reminder is armed.
+          ListenableBuilder(
+            listenable: ReminderService.instance,
+            builder: (context, _) {
+              final on = ReminderService.instance.isEnabled;
+              return IconButton(
+                icon: Icon(
+                  on ? Icons.notifications_active : Icons.notifications_none,
+                  size: 18,
+                ),
+                color: on ? const Color(0xFFF59E0B) : RpgColors.textMuted,
+                onPressed: () => ReminderSettingsSheet.show(context),
+                tooltip: 'Daily reminder',
+              );
+            },
+          ),
           ListenableBuilder(
             listenable: _controller,
             builder: (_, _) {

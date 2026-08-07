@@ -8,6 +8,7 @@ const Map<SessionCategory, double> categoryWeights = {
   SessionCategory.active: 1.5,
   SessionCategory.passive: 0.7,
   SessionCategory.accent: 1.3,
+  SessionCategory.output: 1.8,
 };
 
 class GetJapaneseStatsUseCase {

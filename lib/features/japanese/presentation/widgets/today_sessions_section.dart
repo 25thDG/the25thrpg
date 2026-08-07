@@ -18,6 +18,7 @@ const _categoryColors = {
   SessionCategory.active: Color(0xFFFF7043),
   SessionCategory.passive: Color(0xFFAB47BC),
   SessionCategory.accent: Color(0xFFEC407A),
+  SessionCategory.output: Color(0xFF66BB6A),
 };
 
 String _formatToday() {

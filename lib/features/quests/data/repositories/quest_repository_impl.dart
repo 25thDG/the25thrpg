@@ -10,42 +10,10 @@ class QuestRepositoryImpl implements QuestRepository {
   Future<List<Quest>> getQuests() => _datasource.getQuests();
 
   @override
-  Future<Quest> addQuest({
-    required String title,
-    String? description,
-    required int xpReward,
-    required QuestDifficulty difficulty,
-    required List<QuestObjective> objectives,
-  }) =>
-      _datasource.addQuest(
-        title: title,
-        description: description,
-        xpReward: xpReward,
-        difficulty: difficulty,
-        objectives: objectives,
-      );
+  Future<Quest> addQuest(QuestDraft draft) => _datasource.addQuest(draft);
 
   @override
-  Future<Quest> updateQuest({
-    required String id,
-    required String title,
-    String? description,
-    required int xpReward,
-    required QuestDifficulty difficulty,
-    required QuestStatus status,
-    required List<QuestObjective> objectives,
-    DateTime? completedAt,
-  }) =>
-      _datasource.updateQuest(
-        id: id,
-        title: title,
-        description: description,
-        xpReward: xpReward,
-        difficulty: difficulty,
-        status: status,
-        objectives: objectives,
-        completedAt: completedAt,
-      );
+  Future<Quest> updateQuest(Quest quest) => _datasource.updateQuest(quest);
 
   @override
   Future<void> deleteQuest(String id) => _datasource.deleteQuest(id);
