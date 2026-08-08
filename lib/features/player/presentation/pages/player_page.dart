@@ -8,6 +8,7 @@ import '../../data/datasources/player_supabase_datasource.dart';
 import '../../data/repositories/player_repository_impl.dart';
 import '../controllers/player_controller.dart';
 import '../state/player_state.dart';
+import 'radar_gallery_page.dart'; // TEMP-GALLERY
 import '../widgets/player_hero.dart';
 import '../widgets/player_insights_panel.dart';
 import '../widgets/rpg_colors.dart';
@@ -64,6 +65,26 @@ class _PlayerPageState extends State<PlayerPage> {
         ),
         centerTitle: false,
         actions: [
+          // TEMP-GALLERY — radar style picker, remove once one is chosen.
+          ListenableBuilder(
+            listenable: _controller,
+            builder: (context, _) {
+              final stats = _controller.state.stats;
+              return IconButton(
+                icon: const Icon(Icons.auto_awesome_mosaic_outlined, size: 18),
+                color: RpgColors.textMuted,
+                onPressed: stats == null
+                    ? null
+                    : () => Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) =>
+                                RadarGalleryPage(skills: stats.skills),
+                          ),
+                        ),
+                tooltip: 'Radar styles',
+              );
+            },
+          ),
           // Bell fills in when a daily reminder is armed.
           ListenableBuilder(
             listenable: ReminderService.instance,
