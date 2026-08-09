@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 
 import '../../domain/entities/player_stats.dart';
 import '../../domain/entities/skill_summary.dart';
+import '../../domain/entities/weekly_review.dart';
 import 'insight_charts.dart';
 import 'insight_detail_sheets.dart';
 import 'player_card.dart';
 import 'player_section.dart';
 import 'rpg_colors.dart';
+import 'weekly_review_sheet.dart';
 
 /// Insight cards, all driven by recent activity rather than lifetime averages
 /// that only ever shrink.
@@ -16,7 +18,14 @@ import 'rpg_colors.dart';
 class PlayerInsightsPanel extends StatelessWidget {
   final PlayerStats stats;
 
-  const PlayerInsightsPanel({super.key, required this.stats});
+  /// Null until the day-by-day history has loaded.
+  final WeeklyReview? weeklyReview;
+
+  const PlayerInsightsPanel({
+    super.key,
+    required this.stats,
+    this.weeklyReview,
+  });
 
   SkillSummary? _skill(SkillId id) {
     try {
@@ -39,6 +48,8 @@ class PlayerInsightsPanel extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16),
         child: Column(
           children: [
+            // The week first — it is the question you actually ask.
+            WeekInsightCard(review: weeklyReview),
             JapaneseInsightCard(skill: jp),
             SobrietyInsightCard(skill: mind),
             IntrinsicHeight(

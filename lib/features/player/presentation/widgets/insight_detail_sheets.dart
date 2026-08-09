@@ -47,7 +47,7 @@ void showJapaneseInsight(BuildContext context, SkillSummary s) {
         'on ${fmtDate(date)}.');
   }
 
-  _open(
+  showInsightSheet(
     context,
     InsightSheet(
       title: 'JAPANESE',
@@ -121,7 +121,7 @@ void showSobrietyInsight(BuildContext context, SkillSummary s) {
 
   final lit = s.cleanStreak > 0 && !s.isCleanLogStale;
 
-  _open(
+  showInsightSheet(
     context,
     InsightSheet(
       title: 'SOBRIETY',
@@ -202,7 +202,7 @@ void showNextLevelInsight(BuildContext context, SkillSummary s) {
         'from where you stand today.');
   }
 
-  _open(
+  showInsightSheet(
     context,
     InsightSheet(
       title: 'NEXT LEVEL',
@@ -371,7 +371,7 @@ void showWealthInsight(BuildContext context, SkillSummary s) {
         '${next.remaining} from here.');
   }
 
-  _open(
+  showInsightSheet(
     context,
     InsightSheet(
       title: 'WEALTH',
@@ -439,7 +439,9 @@ void showWealthInsight(BuildContext context, SkillSummary s) {
 
 // ── Shell ─────────────────────────────────────────────────────────────────────
 
-void _open(BuildContext context, Widget sheet) {
+/// Presents any [InsightSheet] with the shared modal treatment. Public so the
+/// weekly review can reuse the same shell.
+void showInsightSheet(BuildContext context, Widget sheet) {
   showModalBottomSheet<void>(
     context: context,
     backgroundColor: Colors.transparent,

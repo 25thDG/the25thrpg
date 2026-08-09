@@ -25,19 +25,30 @@ and the MCP tools will keep flagging it as critical. That report is expected and
 accepted. Do not enable RLS, and do not propose an auth flow, unless the owner
 asks for one.
 
-### 2. Very large single-day sessions are real
+### 2. Very large entries are backfill, and they are real
 
-Some days carry a single huge entry — e.g. 4,000 minutes on 2026-03-24 and 1,200
-minutes on 2026-03-07 in `japanese_sessions`.
+Some rows are enormous — 4,000 minutes on 2026-03-24 and 1,200 minutes on
+2026-03-07 in `japanese_sessions`.
 
-These are backfilled blocks of past practice, entered in one row after the fact.
-They are not typos, and the totals they produce are the totals the owner wants.
+These are **not typos**. They are blocks of practice done before the app
+existed, entered after the fact on whatever day they happened to be typed in.
+The hours are real; the *date* on them is not meaningful.
 
-Consequences to respect:
+So they are treated two ways, and both matter:
 
-- Do not "correct" or delete these rows.
-- Do not add an upper bound to the minutes input — it would block this workflow.
-- A day total above 24 hours is legal here.
+- **They count toward lifetime totals and levels.** That practice happened, and
+  the level is right to reflect it. Never delete or "correct" these rows.
+- **They are excluded from anything measured per day** — the calendar, best day,
+  active days, streaks, daily averages, the weekly review. Left in, one row
+  would claim a 67-hour day and flatten every real day next to it.
+
+The split is `kBackfillThresholdMinutes` in
+`lib/features/player/domain/entities/activity_history.dart`: a single row over
+8 hours is backfill. The largest genuine session in the data is 6 hours, so the
+line is comfortable.
+
+Also: do not add an upper bound to the minutes input — it would block this
+workflow entirely.
 
 ## Structure
 

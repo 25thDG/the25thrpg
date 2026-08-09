@@ -1,3 +1,4 @@
+import '../../domain/entities/activity_history.dart';
 import '../../domain/entities/player_stats.dart';
 import '../../domain/entities/skill_summary.dart';
 import '../../domain/repositories/player_repository.dart';
@@ -55,4 +56,8 @@ class PlayerRepositoryImpl implements PlayerRepository {
 
     return PlayerStats(skills: skills, streakDays: streak);
   }
+
+  @override
+  Future<ActivityHistory> getActivityHistory() =>
+      _datasource.getActivityHistory();
 }

@@ -1,5 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../domain/entities/activity_history.dart';
+
 const _userId = '1a67d50e-4263-4923-b4bc-1bfa57426aae';
 
 // Skill UUIDs in the `skill_sessions` table.
@@ -329,6 +331,117 @@ class PlayerSupabaseDatasource {
     );
   }
 
+  // ── Activity history ───────────────────────────────────────────────────────
+
+  /// Day-by-day activity for the calendar, the analysis and the weekly review.
+  ///
+  /// Pulls everything — both tables are a few hundred rows — and buckets
+  /// locally, so the bucketing rules live next to the rules the rest of this
+  /// file already uses. Entries over [kBackfillThresholdMinutes] are held out
+  /// of the day cells and reported separately; see the README.
+  Future<ActivityHistory> getActivityHistory() async {
+    final now = DateTime.now();
+    final to = DateTime(now.year, now.month, now.day);
+
+    final [japaneseRes, skillRes] = await Future.wait([
+      _client
+          .from('japanese_sessions')
+          .select('minutes, session_at, category')
+          .eq('user_id', _userId)
+          .isFilter('deleted_at', null),
+      _client
+          .from('skill_sessions')
+          .select('minutes, session_at, category')
+          .eq('user_id', _userId)
+          .eq('skill_id', _mindfulnessSkillId)
+          .isFilter('deleted_at', null),
+    ]);
+
+    final japanese = _DayAccumulator();
+    final meditation = _DayAccumulator();
+    final sobriety = <String, bool>{};
+
+    for (final row in (japaneseRes as List).cast<Map<String, dynamic>>()) {
+      japanese.add(
+        at: DateTime.parse(row['session_at'] as String).toLocal(),
+        minutes: row['minutes'] as int? ?? 0,
+        category: row['category'] as String?,
+      );
+    }
+
+    for (final row in (skillRes as List).cast<Map<String, dynamic>>()) {
+      final at = DateTime.parse(row['session_at'] as String).toLocal();
+      final category = row['category'] as String? ?? '';
+
+      // Addiction rows are day verdicts, not meditation time. A relapse wins.
+      if (category == 'addiction_relapse') {
+        sobriety[_dateKey(at)] = false;
+        continue;
+      }
+      if (category == 'addiction') {
+        sobriety[_dateKey(at)] ??= true;
+        continue;
+      }
+
+      meditation.add(
+        at: at,
+        minutes: row['minutes'] as int? ?? 0,
+        category: category.isEmpty ? null : category,
+      );
+    }
+
+    // Start the range at the earliest thing on record so "ALL" means all.
+    final earliest = [
+      japanese.earliest,
+      meditation.earliest,
+      if (sobriety.isNotEmpty)
+        sobriety.keys.map(_parseKey).reduce((a, b) => a.isBefore(b) ? a : b),
+    ].nonNulls.fold<DateTime?>(
+          null,
+          (acc, d) => acc == null || d.isBefore(acc) ? d : acc,
+        );
+
+    final from = earliest ?? to;
+    final dayCount = to.difference(from).inDays + 1;
+
+    List<DayCell> build(_DayAccumulator? acc, Map<String, bool>? verdicts) =>
+        List.generate(dayCount, (i) {
+          final day = from.add(Duration(days: i));
+          final key = _dateKey(day);
+          return DayCell(
+            day: day,
+            minutes: acc?.minutes[key] ?? 0,
+            sessions: acc?.sessions[key] ?? 0,
+            clean: verdicts?[key],
+          );
+        });
+
+    return ActivityHistory(
+      from: from,
+      to: to,
+      series: {
+        HistoryTrack.japanese: HistorySeries(
+          track: HistoryTrack.japanese,
+          days: build(japanese, null),
+          backfillMinutes: japanese.backfillMinutes,
+          backfillEntries: japanese.backfillEntries,
+          categoryMinutes: japanese.categoryMinutes,
+        ),
+        HistoryTrack.mindfulness: HistorySeries(
+          track: HistoryTrack.mindfulness,
+          days: build(meditation, null),
+          backfillMinutes: meditation.backfillMinutes,
+          backfillEntries: meditation.backfillEntries,
+          categoryMinutes: meditation.categoryMinutes,
+        ),
+        HistoryTrack.sobriety: HistorySeries(
+          track: HistoryTrack.sobriety,
+          days: build(null, sobriety),
+        ),
+      },
+    );
+  }
+
   // ── Wealth ─────────────────────────────────────────────────────────────────
 
   Future<PlayerWealthRaw> getWealthData() async {
@@ -370,5 +483,46 @@ class PlayerSupabaseDatasource {
   static DateTime _parseMonth(String s) {
     if (s.length == 7) return DateTime.parse('$s-01');
     return DateTime.parse(s);
+  }
+}
+
+/// Buckets entries into days, holding backfill blocks out of the day totals
+/// while still counting them toward the lifetime figures reported alongside.
+class _DayAccumulator {
+  final minutes = <String, int>{};
+  final sessions = <String, int>{};
+  final categoryMinutes = <String, int>{};
+
+  int backfillMinutes = 0;
+  int backfillEntries = 0;
+  DateTime? earliest;
+
+  void add({
+    required DateTime at,
+    required int minutes,
+    String? category,
+  }) {
+    final day = DateTime(at.year, at.month, at.day);
+    if (earliest == null || day.isBefore(earliest!)) earliest = day;
+
+    if (category != null) {
+      categoryMinutes.update(
+        category,
+        (v) => v + minutes,
+        ifAbsent: () => minutes,
+      );
+    }
+
+    // Real hours, but the date on them is arbitrary — keep them out of the
+    // per-day view and report them separately.
+    if (minutes > kBackfillThresholdMinutes) {
+      backfillMinutes += minutes;
+      backfillEntries++;
+      return;
+    }
+
+    final key = PlayerSupabaseDatasource._dateKey(at);
+    this.minutes.update(key, (v) => v + minutes, ifAbsent: () => minutes);
+    sessions.update(key, (v) => v + 1, ifAbsent: () => 1);
   }
 }

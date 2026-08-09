@@ -9,16 +9,31 @@ import 'package:timezone/timezone.dart' as tz;
 const _prefEnabled = 'reminder_enabled';
 const _prefHour = 'reminder_hour';
 const _prefMinute = 'reminder_minute';
+const _prefWeekly = 'weekly_review_enabled';
 
-/// Fixed id — rescheduling reuses it so there is only ever one daily reminder.
+/// Fixed ids — rescheduling reuses them, so there is only ever one of each.
 const _reminderId = 1001;
+const _weeklyId = 1003;
 
 const _channelId = 'daily_reminder';
 const _channelName = 'Daily reminder';
 const _channelDescription = 'A nudge to log today on your character sheet.';
 
+const _weeklyChannelId = 'weekly_review';
+const _weeklyChannelName = 'Weekly review';
+const _weeklyChannelDescription =
+    'A Sunday look back at the week on your character sheet.';
+
+const _levelChannelId = 'level_up';
+const _levelChannelName = 'Level up';
+const _levelChannelDescription = 'Fires when a skill or your level rises.';
+
 /// Default reminder time when the user turns reminders on: 20:00.
 const _defaultTime = TimeOfDay(hour: 20, minute: 0);
+
+/// The weekly review lands Sunday evening, when there is time to read it.
+const _weeklyWeekday = DateTime.sunday;
+const _weeklyTime = TimeOfDay(hour: 19, minute: 0);
 
 /// Outcome of arming a reminder, so the UI can explain what actually failed.
 enum ReminderStatus {
@@ -48,10 +63,13 @@ class ReminderService extends ChangeNotifier {
 
   bool _ready = false;
   bool _enabled = false;
+  bool _weeklyEnabled = false;
   TimeOfDay _time = _defaultTime;
 
   bool get isEnabled => _enabled;
+  bool get isWeeklyEnabled => _weeklyEnabled;
   TimeOfDay get time => _time;
+  TimeOfDay get weeklyTime => _weeklyTime;
   bool get isReady => _ready;
 
   /// Loads timezone data and the saved preference. Safe to call once at start.
@@ -91,6 +109,7 @@ class ReminderService extends ChangeNotifier {
 
     final prefs = await SharedPreferences.getInstance();
     _enabled = prefs.getBool(_prefEnabled) ?? false;
+    _weeklyEnabled = prefs.getBool(_prefWeekly) ?? false;
     _time = TimeOfDay(
       hour: prefs.getInt(_prefHour) ?? _defaultTime.hour,
       minute: prefs.getInt(_prefMinute) ?? _defaultTime.minute,
@@ -100,6 +119,7 @@ class ReminderService extends ChangeNotifier {
 
     // Re-arm on launch — an OS update or reboot can drop pending alarms.
     if (_enabled) await _schedule();
+    if (_weeklyEnabled) await _scheduleWeekly();
 
     notifyListeners();
   }
@@ -123,6 +143,69 @@ class ReminderService extends ChangeNotifier {
 
     notifyListeners();
     return ReminderStatus.ok;
+  }
+
+  /// Turns the Sunday review notification on or off.
+  Future<ReminderStatus> setWeeklyReview(bool on) async {
+    if (!on) {
+      _weeklyEnabled = false;
+      await _persist();
+      try {
+        await _plugin.cancel(id: _weeklyId);
+      } on PlatformException {
+        // Nothing pending; off either way.
+      } on MissingPluginException {
+        // Same.
+      }
+      notifyListeners();
+      return ReminderStatus.ok;
+    }
+
+    final status = await _requestPermission();
+    if (status != ReminderStatus.ok) return status;
+
+    _weeklyEnabled = true;
+    await _persist();
+
+    if (!await _scheduleWeekly()) {
+      _weeklyEnabled = false;
+      await _persist();
+      notifyListeners();
+      return ReminderStatus.unavailable;
+    }
+
+    notifyListeners();
+    return ReminderStatus.ok;
+  }
+
+  /// Announces a level gain. Fired the moment the app notices one, so the
+  /// notification centre keeps a record of when it happened.
+  Future<void> notifyLevelUp({
+    required String title,
+    required String body,
+    required int id,
+  }) async {
+    try {
+      await _plugin.show(
+        id: 2000 + id,
+        title: title,
+        body: body,
+        notificationDetails: const NotificationDetails(
+          android: AndroidNotificationDetails(
+            _levelChannelId,
+            _levelChannelName,
+            channelDescription: _levelChannelDescription,
+            importance: Importance.high,
+            priority: Priority.high,
+          ),
+          iOS: DarwinNotificationDetails(),
+        ),
+      );
+    } on PlatformException {
+      // A missed notification must never break the celebration on screen.
+    } on MissingPluginException {
+      // Same.
+    }
   }
 
   Future<void> disable() async {
@@ -208,6 +291,7 @@ class ReminderService extends ChangeNotifier {
   Future<void> _persist() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_prefEnabled, _enabled);
+    await prefs.setBool(_prefWeekly, _weeklyEnabled);
     await prefs.setInt(_prefHour, _time.hour);
     await prefs.setInt(_prefMinute, _time.minute);
   }
@@ -245,6 +329,54 @@ class ReminderService extends ChangeNotifier {
     } on MissingPluginException {
       return false;
     }
+  }
+
+  /// Returns false when the platform could not take the schedule.
+  Future<bool> _scheduleWeekly() async {
+    try {
+      await _plugin.cancel(id: _weeklyId);
+      await _plugin.zonedSchedule(
+        id: _weeklyId,
+        title: 'THE WEEK',
+        body: 'Your review is ready. See what moved and what stalled.',
+        scheduledDate: _nextWeekly(),
+        notificationDetails: const NotificationDetails(
+          android: AndroidNotificationDetails(
+            _weeklyChannelId,
+            _weeklyChannelName,
+            channelDescription: _weeklyChannelDescription,
+            importance: Importance.defaultImportance,
+            priority: Priority.defaultPriority,
+          ),
+          iOS: DarwinNotificationDetails(),
+        ),
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        // Repeats on the same weekday at the same time, week after week.
+        matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime,
+      );
+      return true;
+    } on PlatformException {
+      return false;
+    } on MissingPluginException {
+      return false;
+    }
+  }
+
+  /// The next Sunday at [_weeklyTime], or today if Sunday has not reached it.
+  tz.TZDateTime _nextWeekly() {
+    final now = tz.TZDateTime.now(tz.local);
+    var next = tz.TZDateTime(
+      tz.local,
+      now.year,
+      now.month,
+      now.day,
+      _weeklyTime.hour,
+      _weeklyTime.minute,
+    );
+    while (next.weekday != _weeklyWeekday || !next.isAfter(now)) {
+      next = next.add(const Duration(days: 1));
+    }
+    return next;
   }
 
   /// The next time the clock reads [_time] — today if it has not passed yet,

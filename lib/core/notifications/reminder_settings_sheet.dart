@@ -4,6 +4,7 @@ import '../theme/rpg_colors.dart';
 import 'reminder_service.dart';
 
 const _accent = Color(0xFFF59E0B);
+const _weekAccent = Color(0xFF8B7BE8);
 
 /// Bottom sheet for turning the daily reminder on and picking its time.
 class ReminderSettingsSheet extends StatefulWidget {
@@ -26,6 +27,7 @@ class ReminderSettingsSheet extends StatefulWidget {
 class _ReminderSettingsSheetState extends State<ReminderSettingsSheet> {
   final _service = ReminderService.instance;
   bool _busy = false;
+  bool _busyWeekly = false;
 
   Future<void> _toggle(bool on) async {
     setState(() => _busy = true);
@@ -39,6 +41,14 @@ class _ReminderSettingsSheetState extends State<ReminderSettingsSheet> {
 
     if (!mounted) return;
     setState(() => _busy = false);
+    if (status != ReminderStatus.ok) _report(status);
+  }
+
+  Future<void> _toggleWeekly(bool on) async {
+    setState(() => _busyWeekly = true);
+    final status = await _service.setWeeklyReview(on);
+    if (!mounted) return;
+    setState(() => _busyWeekly = false);
     if (status != ReminderStatus.ok) _report(status);
   }
 
@@ -226,7 +236,69 @@ class _ReminderSettingsSheetState extends State<ReminderSettingsSheet> {
               ),
             ),
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 22),
+
+          // ── Weekly review ────────────────────────────────────────────────
+          Row(
+            children: [
+              Container(width: 6, height: 6, color: _weekAccent),
+              const SizedBox(width: 8),
+              const Text(
+                'WEEKLY REVIEW',
+                style: TextStyle(
+                  color: RpgColors.textSecondary,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 2.4,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'A look back every Sunday at ${_fmt(_service.weeklyTime)}.',
+            style: const TextStyle(color: RpgColors.textMuted, fontSize: 11),
+          ),
+          const SizedBox(height: 14),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+            decoration: BoxDecoration(
+              color: RpgColors.panelBgAlt,
+              borderRadius: BorderRadius.circular(4),
+              border: Border.all(color: RpgColors.border),
+            ),
+            child: Row(
+              children: [
+                const Expanded(
+                  child: Text(
+                    'SUNDAY REVIEW',
+                    style: TextStyle(
+                      color: RpgColors.textSecondary,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 1.4,
+                    ),
+                  ),
+                ),
+                if (_busyWeekly)
+                  const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 1.5,
+                      color: RpgColors.textMuted,
+                    ),
+                  )
+                else
+                  Switch(
+                    value: _service.isWeeklyEnabled,
+                    activeThumbColor: _weekAccent,
+                    onChanged: _toggleWeekly,
+                  ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 22),
 
           // ── Test ─────────────────────────────────────────────────────────
           GestureDetector(
