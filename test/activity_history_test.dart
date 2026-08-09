@@ -11,7 +11,7 @@ HistorySeries series(
   DateTime? endingOn,
   int backfillMinutes = 0,
   int backfillEntries = 0,
-  Map<String, int> categoryMinutes = const {},
+  String? category,
 }) {
   final length = minutes?.length ?? clean?.length ?? 0;
   final today = endingOn ?? DateTime.now();
@@ -21,12 +21,13 @@ HistorySeries series(
     track: track,
     backfillMinutes: backfillMinutes,
     backfillEntries: backfillEntries,
-    categoryMinutes: categoryMinutes,
     days: List.generate(length, (i) {
+      final m = minutes?[i] ?? 0;
       return DayCell(
         day: midnight.subtract(Duration(days: length - 1 - i)),
-        minutes: minutes?[i] ?? 0,
-        sessions: (minutes?[i] ?? 0) > 0 ? 1 : 0,
+        minutes: m,
+        sessions: m > 0 ? 1 : 0,
+        categories: (category != null && m > 0) ? {category: m} : const {},
         clean: clean?[i],
       );
     }),
@@ -198,6 +199,23 @@ void main() {
       expect(narrowed.days.length, 30);
       expect(narrowed.totalMinutes, 300);
       expect(narrowed.backfillMinutes, 5200);
+    });
+
+    test('the category split sums to the total for the range shown', () {
+      final s = series(
+        HistoryTrack.japanese,
+        minutes: List.filled(40, 10),
+        category: 'vocab',
+        backfillMinutes: 5200,
+      );
+      expect(s.categoryMinutes['vocab'], 400);
+      expect(s.categoryMinutes.values.fold(0, (a, b) => a + b), s.totalMinutes);
+
+      // Narrowing the range narrows the split with it.
+      final narrowed = s.lastRange(10);
+      expect(narrowed.categoryMinutes['vocab'], 100);
+      expect(narrowed.categoryMinutes.values.fold(0, (a, b) => a + b),
+          narrowed.totalMinutes);
     });
 
     test('a null range means everything', () {

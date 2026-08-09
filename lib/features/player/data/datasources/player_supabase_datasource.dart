@@ -412,6 +412,7 @@ class PlayerSupabaseDatasource {
             day: day,
             minutes: acc?.minutes[key] ?? 0,
             sessions: acc?.sessions[key] ?? 0,
+            categories: acc?.categories[key] ?? const {},
             clean: verdicts?[key],
           );
         });
@@ -425,14 +426,12 @@ class PlayerSupabaseDatasource {
           days: build(japanese, null),
           backfillMinutes: japanese.backfillMinutes,
           backfillEntries: japanese.backfillEntries,
-          categoryMinutes: japanese.categoryMinutes,
         ),
         HistoryTrack.mindfulness: HistorySeries(
           track: HistoryTrack.mindfulness,
           days: build(meditation, null),
           backfillMinutes: meditation.backfillMinutes,
           backfillEntries: meditation.backfillEntries,
-          categoryMinutes: meditation.categoryMinutes,
         ),
         HistoryTrack.sobriety: HistorySeries(
           track: HistoryTrack.sobriety,
@@ -491,7 +490,7 @@ class PlayerSupabaseDatasource {
 class _DayAccumulator {
   final minutes = <String, int>{};
   final sessions = <String, int>{};
-  final categoryMinutes = <String, int>{};
+  final categories = <String, Map<String, int>>{};
 
   int backfillMinutes = 0;
   int backfillEntries = 0;
@@ -505,16 +504,9 @@ class _DayAccumulator {
     final day = DateTime(at.year, at.month, at.day);
     if (earliest == null || day.isBefore(earliest!)) earliest = day;
 
-    if (category != null) {
-      categoryMinutes.update(
-        category,
-        (v) => v + minutes,
-        ifAbsent: () => minutes,
-      );
-    }
-
     // Real hours, but the date on them is arbitrary — keep them out of the
-    // per-day view and report them separately.
+    // per-day view, and out of the category split with it, so every figure on
+    // the analysis reconciles.
     if (minutes > kBackfillThresholdMinutes) {
       backfillMinutes += minutes;
       backfillEntries++;
@@ -524,5 +516,11 @@ class _DayAccumulator {
     final key = PlayerSupabaseDatasource._dateKey(at);
     this.minutes.update(key, (v) => v + minutes, ifAbsent: () => minutes);
     sessions.update(key, (v) => v + 1, ifAbsent: () => 1);
+
+    if (category != null) {
+      categories
+          .putIfAbsent(key, () => <String, int>{})
+          .update(category, (v) => v + minutes, ifAbsent: () => minutes);
+    }
   }
 }

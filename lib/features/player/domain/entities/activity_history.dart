@@ -63,6 +63,9 @@ class DayCell {
   /// How many separate entries made up [minutes].
   final int sessions;
 
+  /// Minutes per logging category on this day, backfill excluded.
+  final Map<String, int> categories;
+
   /// Sobriety only: true clean, false slipped, null never logged.
   final bool? clean;
 
@@ -70,6 +73,7 @@ class DayCell {
     required this.day,
     this.minutes = 0,
     this.sessions = 0,
+    this.categories = const {},
     this.clean,
   });
 
@@ -133,17 +137,27 @@ class HistorySeries {
   final int backfillMinutes;
   final int backfillEntries;
 
-  /// Minutes per logging category, backfill excluded. Empty on tracks that do
-  /// not categorise.
-  final Map<String, int> categoryMinutes;
-
   const HistorySeries({
     required this.track,
     required this.days,
     this.backfillMinutes = 0,
     this.backfillEntries = 0,
-    this.categoryMinutes = const {},
   });
+
+  /// Minutes per logging category across the days in range, backfill excluded.
+  /// Derived rather than stored so it always sums to [totalMinutes] — a split
+  /// that disagreed with the total beside it would just look like a bug.
+  Map<String, int> get categoryMinutes {
+    final out = <String, int>{};
+    for (final d in days) {
+      d.categories.forEach((k, v) => out.update(
+            k,
+            (existing) => existing + v,
+            ifAbsent: () => v,
+          ));
+    }
+    return out;
+  }
 
   bool get isEmpty => days.isEmpty;
 
@@ -156,7 +170,6 @@ class HistorySeries {
       days: days.sublist(days.length - count),
       backfillMinutes: backfillMinutes,
       backfillEntries: backfillEntries,
-      categoryMinutes: categoryMinutes,
     );
   }
 
@@ -170,7 +183,6 @@ class HistorySeries {
       days: days.sublist(first),
       backfillMinutes: backfillMinutes,
       backfillEntries: backfillEntries,
-      categoryMinutes: categoryMinutes,
     );
   }
 

@@ -121,7 +121,7 @@ class _HistoryPageState extends State<HistoryPage> {
           if (series.categoryMinutes.isNotEmpty)
             _Block(
               title: 'WHERE THE TIME WENT',
-              trailing: 'ALL TIME',
+              trailing: 'IN RANGE',
               color: color,
               child: CategorySplit(minutes: series.categoryMinutes),
             ),
@@ -305,7 +305,7 @@ class _Headline extends StatelessWidget {
         : <(String, String)>[
             ('TOTAL', fmtDuration(series.totalMinutes)),
             ('DAYS ACTIVE', '${series.winDays}'),
-            ('CONSISTENCY', '${(series.consistency * 100).round()}%'),
+            ('% OF DAYS', '${(series.consistency * 100).round()}%'),
             ('STREAK', '${series.currentStreak}d'),
           ];
 

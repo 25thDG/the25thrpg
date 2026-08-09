@@ -135,6 +135,9 @@ class _HeatmapPainter extends CustomPainter {
     final radius = Radius.circular(max(1.5, cell * 0.22));
     final steps = _steps(track);
     int lastMonth = -1;
+    // Right edge of the last month label drawn, so two months starting in
+    // adjacent columns cannot print on top of each other.
+    double labelRight = -1000;
 
     for (int i = 0; i < days.length; i++) {
       final d = days[i];
@@ -178,7 +181,11 @@ class _HeatmapPainter extends CustomPainter {
           )..layout();
           // Pull the last month back inside the box rather than dropping it —
           // the current month is the one you most want to find.
-          tp.paint(canvas, Offset(min(x, size.width - tp.width), 0));
+          final lx = min(x, size.width - tp.width);
+          if (lx >= labelRight + 5) {
+            tp.paint(canvas, Offset(lx, 0));
+            labelRight = lx + tp.width;
+          }
         }
       }
     }
