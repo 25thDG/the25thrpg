@@ -1,3 +1,4 @@
+import '../../../player/domain/entities/activity_history.dart';
 import '../../domain/entities/japanese_session.dart';
 import '../../domain/entities/japanese_stats.dart';
 import '../../domain/repositories/japanese_repository.dart';
@@ -45,6 +46,14 @@ class GetJapaneseStatsUseCase {
     // 5. Best rolling 30-day window over all history
     final best30DayWeightedMinutes = _computeBest30DayWindow(sessions);
 
+    // 6. Last 7 days — a backfill row would fake a week's pace.
+    final cutoff7 = DateTime.now().subtract(const Duration(days: 7));
+    final last7DaysMinutes = sessions
+        .where((s) =>
+            s.sessionAt.isAfter(cutoff7) &&
+            s.minutes <= kBackfillThresholdMinutes)
+        .fold(0, (sum, s) => sum + s.minutes);
+
     return JapaneseStats(
       lifetimeMinutes: lifetimeMinutes,
       lifetimeHours: lifetimeHours,
@@ -53,6 +62,7 @@ class GetJapaneseStatsUseCase {
       last30DaysWeightedMinutes: last30DaysWeightedMinutes,
       last30DaysRawMinutes: last30DaysRawMinutes,
       best30DayWeightedMinutes: best30DayWeightedMinutes,
+      last7DaysMinutes: last7DaysMinutes,
     );
   }
 

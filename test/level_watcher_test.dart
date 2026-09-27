@@ -4,18 +4,18 @@ import 'package:the25thrpg/core/progression/level_watcher.dart';
 import 'package:the25thrpg/features/player/domain/entities/player_stats.dart';
 import 'package:the25thrpg/features/player/domain/entities/skill_summary.dart';
 
-/// Mindfulness level is exactly cleanDays / 10 when no meditation is logged,
+/// Mindfulness level is exactly one per [SkillSummary.cleanDaysPerLevelPoint]
+/// clean days when no meditation is logged,
 /// which makes it the easiest skill to dial to a chosen level.
-PlayerStats statsWith({required int mindfulnessLevel, int questXp = 0}) {
+PlayerStats statsWith({required int mindfulnessLevel}) {
   return PlayerStats(
     skills: [
       const SkillSummary(skill: SkillId.japanese),
       const SkillSummary(skill: SkillId.wealth),
       SkillSummary(
         skill: SkillId.mindfulness,
-        cleanDays: mindfulnessLevel * 10,
+        cleanDays: mindfulnessLevel * SkillSummary.cleanDaysPerLevelPoint,
       ),
-      SkillSummary(skill: SkillId.resolve, questXp: questXp),
     ],
   );
 }

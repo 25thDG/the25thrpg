@@ -4,28 +4,28 @@ import 'package:the25thrpg/features/player/presentation/widgets/skill_radar_char
 
 void main() {
   group('mindfulness level', () {
-    test('meditation minutes alone use the 2,000 min target', () {
-      // sqrt(2000)/sqrt(2000) * 100 = 100
+    test('meditation minutes alone use the 20,000 min target', () {
+      // sqrt(20000)/sqrt(20000) * 100 = 100
       const s = SkillSummary(
         skill: SkillId.mindfulness,
-        lifetimeMinutes: 2000,
+        lifetimeMinutes: 20000,
       );
       expect(s.level, 100);
     });
 
-    test('clean days add one level per ten days', () {
+    test('clean days add one level per thirty days', () {
       const none = SkillSummary(skill: SkillId.mindfulness, lifetimeMinutes: 500);
       const withClean = SkillSummary(
         skill: SkillId.mindfulness,
         lifetimeMinutes: 500,
-        cleanDays: 40,
+        cleanDays: 120,
       );
       expect(withClean.cleanDayBonus, 4.0);
       expect(withClean.level, none.level + 4);
     });
 
     test('clean-day bonus is capped at +30', () {
-      const s = SkillSummary(skill: SkillId.mindfulness, cleanDays: 900);
+      const s = SkillSummary(skill: SkillId.mindfulness, cleanDays: 1200);
       expect(s.cleanDayBonus, 30.0);
     });
 
@@ -36,12 +36,12 @@ void main() {
 
     test('clean days to next bonus counts down inside the current block', () {
       const s = SkillSummary(skill: SkillId.mindfulness, cleanDays: 43);
-      expect(s.cleanDaysToNextBonus, 7);
+      expect(s.cleanDaysToNextBonus, 17);
     });
 
-    test('a fresh block needs the full ten days', () {
-      const s = SkillSummary(skill: SkillId.mindfulness, cleanDays: 40);
-      expect(s.cleanDaysToNextBonus, 10);
+    test('a fresh block needs the full thirty days', () {
+      const s = SkillSummary(skill: SkillId.mindfulness, cleanDays: 60);
+      expect(s.cleanDaysToNextBonus, 30);
     });
 
     test('clean days to next bonus is null once the bonus is capped', () {
@@ -55,20 +55,20 @@ void main() {
     });
 
     test('mastery ignores the clean-day bonus', () {
-      // 500 meditation min is far below the 2,000 target, so no mastery even
-      // though clean days push the raw level past 100.
+      // 12,000 meditation min is below the 20,000 target, so no mastery even
+      // though the capped clean-day bonus pushes the raw level past 100.
       const s = SkillSummary(
         skill: SkillId.mindfulness,
-        lifetimeMinutes: 500,
+        lifetimeMinutes: 12000,
         cleanDays: 900,
       );
       expect(s.mastery, 0);
     });
 
-    test('mastery adds one point per 200 min beyond the target', () {
+    test('mastery adds one point per 2,000 min beyond the target', () {
       const s = SkillSummary(
         skill: SkillId.mindfulness,
-        lifetimeMinutes: 2600,
+        lifetimeMinutes: 26000,
       );
       expect(s.mastery, 3);
     });
@@ -186,7 +186,7 @@ void main() {
       const withClean = SkillSummary(
         skill: SkillId.mindfulness,
         lifetimeMinutes: 110,
-        cleanDays: 50,
+        cleanDays: 150,
         last30DaysMinutes: 300,
       );
       const without = SkillSummary(

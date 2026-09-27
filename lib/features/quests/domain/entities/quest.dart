@@ -30,18 +30,6 @@ enum QuestDifficulty {
     }
   }
 
-  int get defaultXp {
-    switch (this) {
-      case QuestDifficulty.side:
-        return 50;
-      case QuestDifficulty.normal:
-        return 150;
-      case QuestDifficulty.epic:
-        return 400;
-      case QuestDifficulty.legendary:
-        return 1000;
-    }
-  }
 
   static QuestDifficulty fromString(String v) => switch (v) {
         'side' => QuestDifficulty.side,
@@ -111,7 +99,6 @@ class Quest {
   final String id;
   final String title;
   final String? description;
-  final int xpReward;
   final QuestDifficulty difficulty;
   final QuestStatus status;
   final List<QuestObjective> objectives;
@@ -135,7 +122,6 @@ class Quest {
     required this.id,
     required this.title,
     this.description,
-    required this.xpReward,
     required this.difficulty,
     required this.status,
     required this.objectives,
@@ -213,7 +199,6 @@ class Quest {
   Quest copyWith({
     String? title,
     Object? description = _unset,
-    int? xpReward,
     QuestDifficulty? difficulty,
     QuestStatus? status,
     List<QuestObjective>? objectives,
@@ -229,7 +214,6 @@ class Quest {
         description: identical(description, _unset)
             ? this.description
             : description as String?,
-        xpReward: xpReward ?? this.xpReward,
         difficulty: difficulty ?? this.difficulty,
         status: status ?? this.status,
         objectives: objectives ?? this.objectives,

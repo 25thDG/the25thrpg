@@ -4,34 +4,26 @@ const _masteryWeight = 0.25;
 
 // ── Mindfulness tuning ────────────────────────────────────────────────────────
 
-/// Meditation minutes for level 100. Sessions run ~6 min, so the old 10,000
-/// target was unreachable and kept the skill pinned at a low level.
-const _mindfulnessTargetMinutes = 2000;
+/// Meditation minutes for level 100 (~333 h). The earlier 2,000 target put a
+/// handful of 6-minute sessions at level 25 and levelled up almost every
+/// sitting; this makes Mind a multi-year skill like the others.
+const _mindfulnessTargetMinutes = 20000;
 
 /// Meditation minutes per mastery point beyond the target.
-const _mindfulnessMasteryStep = 200;
+const _mindfulnessMasteryStep = 2000;
 
-/// Clean (addiction-free) days needed per level point.
-const _cleanDaysPerLevelPoint = 10;
+/// Clean (addiction-free) days needed per level point — a month clean is
+/// worth one level.
+const _cleanDaysPerLevelPoint = 30;
 
 /// Ceiling on the sobriety bonus, so discipline is worth a lot but meditation
 /// still carries most of the skill.
 const _maxCleanDayBonus = 30.0;
 
-// ── Resolve tuning ────────────────────────────────────────────────────────────
-
-/// Completed-quest XP for level 100. At 1,000 XP for a legendary quest this is
-/// roughly twenty of the hardest things you will ever commit to.
-const _resolveTargetXp = 20000;
-
-/// Quest XP per mastery point beyond the target.
-const _resolveMasteryStep = 2000;
-
 enum SkillId {
   japanese,
   wealth,
   mindfulness,
-  resolve,
 }
 
 extension SkillIdX on SkillId {
@@ -43,8 +35,6 @@ extension SkillIdX on SkillId {
         return 'WEALTH';
       case SkillId.mindfulness:
         return 'MINDFULNESS';
-      case SkillId.resolve:
-        return 'RESOLVE';
     }
   }
 
@@ -56,8 +46,6 @@ extension SkillIdX on SkillId {
         return 'Financial Power';
       case SkillId.mindfulness:
         return 'Inner Discipline';
-      case SkillId.resolve:
-        return 'Sworn Oaths';
     }
   }
 
@@ -68,8 +56,6 @@ extension SkillIdX on SkillId {
       case SkillId.wealth:
         return 1.2;
       case SkillId.mindfulness:
-        return 1.0;
-      case SkillId.resolve:
         return 1.0;
     }
   }
@@ -108,15 +94,6 @@ class SkillSummary {
   /// Last 14 days, oldest first: true clean, false relapse, null unlogged.
   final List<bool?> last14CleanDays;
 
-  // ── Resolve: quests ───────────────────────────────────────────────────────
-
-  /// Total XP from completed quests.
-  final int questXp;
-
-  /// How many quests are finished and still open, for the skill row subtitle.
-  final int questsCompleted;
-  final int questsActive;
-
   // ── Wealth: current net worth (€) ─────────────────────────────────────────
   final double currentNetWorthEur;
 
@@ -136,9 +113,6 @@ class SkillSummary {
     this.relapseDays = 0,
     this.daysSinceLastCleanLog,
     this.last14CleanDays = const [],
-    this.questXp = 0,
-    this.questsCompleted = 0,
-    this.questsActive = 0,
     this.currentNetWorthEur = 0.0,
     this.monthlyGrowthEur,
   });
@@ -149,8 +123,6 @@ class SkillSummary {
     switch (skill) {
       case SkillId.wealth:
         return currentNetWorthEur > 0;
-      case SkillId.resolve:
-        return questsActive > 0;
       default:
         return last30DaysMinutes > 0;
     }
@@ -171,15 +143,11 @@ class SkillSummary {
 
       case SkillId.mindfulness:
         // Sqrt on meditation minutes, plus a bonus for clean days.
-        // 2,000 min (~33h) → 100, +1 level per 10 clean days (max +30).
+        // 20,000 min (~333h) → 100, +1 level per 30 clean days (max +30).
         final base = sqrt(lifetimeMinutes.toDouble()) /
             sqrt(_mindfulnessTargetMinutes) *
             100;
         return base + cleanDayBonus;
-
-      case SkillId.resolve:
-        // Sqrt on completed-quest XP. 20,000 XP → 100.
-        return sqrt(questXp.toDouble()) / sqrt(_resolveTargetXp) * 100;
     }
   }
 
@@ -226,10 +194,6 @@ class SkillSummary {
         return ((lifetimeMinutes - _mindfulnessTargetMinutes) /
                 _mindfulnessMasteryStep)
             .floor();
-
-      case SkillId.resolve:
-        if (questXp <= _resolveTargetXp) return 0;
-        return ((questXp - _resolveTargetXp) / _resolveMasteryStep).floor();
     }
   }
 
@@ -267,10 +231,6 @@ class SkillSummary {
         final neededMin =
             pow(fromMeditation / 100.0, 2) * _mindfulnessTargetMinutes;
         return _fmtTime((neededMin - lifetimeMinutes) / 60.0);
-
-      case SkillId.resolve:
-        final needed = pow(targetLevel / 100.0, 2) * _resolveTargetXp;
-        return '${(needed - questXp).ceil()} XP';
     }
   }
 
@@ -288,9 +248,6 @@ class SkillSummary {
           (_mindfulnessMasteryStep - (excessMin % _mindfulnessMasteryStep)) /
               60.0,
         );
-      case SkillId.resolve:
-        final excessXp = questXp - _resolveTargetXp;
-        return '${_resolveMasteryStep - (excessXp % _resolveMasteryStep)} XP';
     }
   }
 
@@ -334,10 +291,6 @@ class SkillSummary {
         return ((lifetimeMinutes - _mindfulnessTargetMinutes) %
                 _mindfulnessMasteryStep) /
             _mindfulnessMasteryStep;
-      case SkillId.resolve:
-        if (questXp <= _resolveTargetXp) return 0.0;
-        return ((questXp - _resolveTargetXp) % _resolveMasteryStep) /
-            _resolveMasteryStep;
     }
   }
 
@@ -409,9 +362,6 @@ class SkillSummary {
         final needed = _mindfulnessTargetMinutes +
             targetMastery * _mindfulnessMasteryStep.toDouble();
         return _fmtTime((needed - lifetimeMinutes) / 60.0);
-      case SkillId.resolve:
-        final needed = _resolveTargetXp + targetMastery * _resolveMasteryStep;
-        return '${needed - questXp} XP';
     }
   }
 
@@ -457,7 +407,6 @@ class SkillSummary {
 
     switch (skill) {
       case SkillId.wealth:
-      case SkillId.resolve:
         return null;
 
       case SkillId.japanese:

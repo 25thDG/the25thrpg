@@ -8,11 +8,13 @@ import '../../application/use_cases/get_today_japanese_sessions_use_case.dart';
 import '../../application/use_cases/update_japanese_session_use_case.dart';
 import '../../data/datasources/japanese_supabase_datasource.dart';
 import '../../data/repositories/japanese_repository_impl.dart';
+import '../../domain/entities/japanese_milestone.dart';
 import '../controllers/japanese_controller.dart';
 import '../state/japanese_state.dart';
 import '../../../../core/theme/rpg_colors.dart';
 import '../widgets/category_breakdown_section.dart';
 import '../widgets/lifetime_stats_section.dart';
+import '../widgets/milestone_section.dart';
 import '../widgets/today_sessions_section.dart';
 
 class JapanesePage extends StatefulWidget {
@@ -166,6 +168,15 @@ class _JapanesePageState extends State<JapanesePage> {
               delegate: SliverChildListDelegate([
                 if (state.stats != null) ...[
                   LifetimeStatsSection(stats: state.stats!),
+                  const SizedBox(height: 14),
+                  MilestoneSection(
+                    forecast: MilestoneForecast(
+                      milestone: state.milestone,
+                      lifetimeHours: state.stats!.lifetimeHours,
+                      hoursPerWeek: state.stats!.last7DaysMinutes / 60.0,
+                    ),
+                    onChanged: _controller.setMilestone,
+                  ),
                   const SizedBox(height: 14),
                   CategoryBreakdownSection(stats: state.stats!),
                   const SizedBox(height: 14),

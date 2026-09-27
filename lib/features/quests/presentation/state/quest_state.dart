@@ -14,9 +14,6 @@ class QuestState {
   List<Quest> get completedQuests =>
       quests.where((q) => q.status == QuestStatus.completed).toList();
 
-  int get totalXpEarned =>
-      completedQuests.fold(0, (sum, q) => sum + q.xpReward);
-
   const QuestState({
     this.status = QuestLoadStatus.initial,
     this.quests = const [],

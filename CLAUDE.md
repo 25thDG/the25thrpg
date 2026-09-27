@@ -45,4 +45,4 @@ Supabase project `ujwiflvjioyjneczeoyi`, reachable via the `supabase` MCP server
 
 ## Stale docs
 
-`GAME_SYSTEM.md` describes the original six-skill design (with Creation, Sport, Social). The current app has four skills — Japanese, Wealth, Mindfulness, Resolve. Trust `skill_summary.dart` over that file.
+`GAME_SYSTEM.md` describes the original six-skill design (with Creation, Sport, Social). The current app has three skills — Japanese, Wealth, Mindfulness (Resolve was removed; see README). Trust `skill_summary.dart` over that file.

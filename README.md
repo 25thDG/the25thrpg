@@ -1,8 +1,8 @@
 # the25thrpg
 
-A personal life-tracking RPG. Real habits feed a character sheet: four skills
-(Japanese, Wealth, Mindfulness, Resolve) level up from logged practice, money,
-sobriety and completed quests.
+A personal life-tracking RPG. Real habits feed a character sheet: three skills
+(Japanese, Wealth, Mindfulness) level up from logged practice, money and
+sobriety.
 
 Flutter + Supabase. Single user — the owner is the only person who installs or
 uses it.
@@ -92,6 +92,11 @@ points beyond it.
 deleted and the `creation_*` tables dropped. Their historical rows are still in
 `skill_sessions` (Sport, Social, Creation entries, last used April 2026). Nothing
 reads them — every query filters by `skill_id` — so they are inert history.
+
+The **Resolve** skill (levelled by quest XP) was removed in September 2026:
+quests were set too rarely to move it. The Quests tab stays as a plain goal
+list with no XP. The `quests.xp_reward` column is still there (default 150) and
+old rows keep their values, but nothing reads or writes it.
 
 ## Verifying a change
 

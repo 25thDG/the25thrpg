@@ -5,6 +5,8 @@ import '../../application/use_cases/delete_japanese_session_use_case.dart';
 import '../../application/use_cases/get_japanese_stats_use_case.dart';
 import '../../application/use_cases/get_today_japanese_sessions_use_case.dart';
 import '../../application/use_cases/update_japanese_session_use_case.dart';
+import '../../data/datasources/japanese_milestone_prefs.dart';
+import '../../domain/entities/japanese_milestone.dart';
 import '../../domain/entities/japanese_session.dart';
 import '../state/japanese_state.dart';
 
@@ -14,6 +16,7 @@ class JapaneseController extends ChangeNotifier {
   final AddJapaneseSessionUseCase _addSession;
   final UpdateJapaneseSessionUseCase _updateSession;
   final DeleteJapaneseSessionUseCase _deleteSession;
+  final JapaneseMilestonePrefs _milestonePrefs;
 
   JapaneseState _state = JapaneseState.initial();
   JapaneseState get state => _state;
@@ -24,11 +27,13 @@ class JapaneseController extends ChangeNotifier {
     required AddJapaneseSessionUseCase addSession,
     required UpdateJapaneseSessionUseCase updateSession,
     required DeleteJapaneseSessionUseCase deleteSession,
+    JapaneseMilestonePrefs milestonePrefs = const JapaneseMilestonePrefs(),
   })  : _getStats = getStats,
         _getTodaySessions = getTodaySessions,
         _addSession = addSession,
         _updateSession = updateSession,
-        _deleteSession = deleteSession;
+        _deleteSession = deleteSession,
+        _milestonePrefs = milestonePrefs;
 
   void _emit(JapaneseState next) {
     _state = next;
@@ -40,7 +45,28 @@ class JapaneseController extends ChangeNotifier {
       statsStatus: LoadStatus.loading,
       sessionsStatus: LoadStatus.loading,
     ));
-    await Future.wait([_loadStats(), _loadTodaySessions()]);
+    await Future.wait([_loadStats(), _loadTodaySessions(), _loadMilestone()]);
+  }
+
+  Future<void> _loadMilestone() async {
+    try {
+      final milestone = await _milestonePrefs.load();
+      // Runs beside the stats load — keep any error it reported.
+      _emit(_state.copyWith(
+        milestone: milestone,
+        errorMessage: _state.errorMessage,
+      ));
+    } catch (_) {
+      // Unreadable prefs leave the default target in place.
+    }
+  }
+
+  Future<void> setMilestone(JapaneseMilestone milestone) async {
+    _emit(_state.copyWith(
+      milestone: milestone,
+      errorMessage: _state.errorMessage,
+    ));
+    await _milestonePrefs.save(milestone);
   }
 
   Future<void> _loadStats() async {

@@ -1,5 +1,4 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:the25thrpg/features/player/domain/entities/skill_summary.dart';
 import 'package:the25thrpg/features/quests/domain/entities/quest.dart';
 
 Quest _quest({
@@ -15,7 +14,6 @@ Quest _quest({
     Quest(
       id: 'q1',
       title: 'Test quest',
-      xpReward: 400,
       difficulty: QuestDifficulty.epic,
       status: status,
       objectives: objectives,
@@ -170,47 +168,6 @@ void main() {
     test('a deadline can be removed', () {
       final q = _quest(targetDate: DateTime.now().add(const Duration(days: 10)));
       expect(q.copyWith(targetDate: null).targetDate, isNull);
-    });
-  });
-
-  group('resolve skill', () {
-    test('quest xp drives the level on a 20,000 xp target', () {
-      const s = SkillSummary(skill: SkillId.resolve, questXp: 20000);
-      expect(s.level, 100);
-    });
-
-    test('one completed epic quest is already worth real levels', () {
-      // sqrt(400)/sqrt(20000)*100 = 14.1
-      const s = SkillSummary(skill: SkillId.resolve, questXp: 400);
-      expect(s.level, 14);
-    });
-
-    test('no completed quests floors at level 1', () {
-      const s = SkillSummary(skill: SkillId.resolve);
-      expect(s.level, 1);
-    });
-
-    test('an open quest makes the skill active', () {
-      const idle = SkillSummary(skill: SkillId.resolve, questXp: 400);
-      const busy = SkillSummary(skill: SkillId.resolve, questsActive: 1);
-      expect(idle.isActive, isFalse);
-      expect(busy.isActive, isTrue);
-    });
-
-    test('mastery accrues past the target', () {
-      const s = SkillSummary(skill: SkillId.resolve, questXp: 26000);
-      expect(s.mastery, 3);
-    });
-
-    test('resolve has no time-based eta', () {
-      const s = SkillSummary(skill: SkillId.resolve, questXp: 400);
-      expect(s.minutesToNextLevel, isNull);
-      expect(s.daysToNextLevel, isNull);
-    });
-
-    test('remaining to next level is quoted in xp', () {
-      const s = SkillSummary(skill: SkillId.resolve, questXp: 400);
-      expect(s.remainingToNextLevel, endsWith('XP'));
     });
   });
 }

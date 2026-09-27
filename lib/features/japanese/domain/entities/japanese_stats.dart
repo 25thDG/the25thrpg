@@ -21,6 +21,9 @@ class JapaneseStats {
   final int last30DaysRawMinutes;
   final double best30DayWeightedMinutes;
 
+  /// Minutes in the last 7 days, backfill excluded — the weekly pace.
+  final int last7DaysMinutes;
+
   const JapaneseStats({
     required this.lifetimeMinutes,
     required this.lifetimeHours,
@@ -29,6 +32,7 @@ class JapaneseStats {
     required this.last30DaysWeightedMinutes,
     required this.last30DaysRawMinutes,
     required this.best30DayWeightedMinutes,
+    required this.last7DaysMinutes,
   });
 
   /// Progress toward the current horizon, capped at 1.0 for display.

@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 
 import '../../domain/entities/skill_summary.dart';
@@ -76,8 +78,8 @@ class RadarGalleryPage extends StatelessWidget {
           _Entry(
             tag: 'F',
             title: 'CRYSTAL',
-            blurb: 'One gem, cut into four facets — a colour per skill.',
-            child: RadarCrystal(skills: skills),
+            blurb: 'One gem, a facet per pair of skills, hung point-down.',
+            child: RadarCrystal(skills: skills, rotation: pi),
           ),
           _Entry(
             tag: 'G',

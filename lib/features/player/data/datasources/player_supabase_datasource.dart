@@ -82,20 +82,6 @@ class PlayerWealthRaw {
   });
 }
 
-/// Quest totals behind the Resolve skill.
-class PlayerResolveRaw {
-  /// XP from completed quests only — an open quest is worth nothing yet.
-  final int questXp;
-  final int questsCompleted;
-  final int questsActive;
-
-  const PlayerResolveRaw({
-    this.questXp = 0,
-    this.questsCompleted = 0,
-    this.questsActive = 0,
-  });
-}
-
 // ── Datasource ────────────────────────────────────────────────────────────────
 
 class PlayerSupabaseDatasource {
@@ -127,9 +113,12 @@ class PlayerSupabaseDatasource {
       final m = row['minutes'] as int? ?? 0;
       lifetime += m;
       final at = DateTime.parse(row['session_at'] as String).toLocal();
+      if (!at.isBefore(_trackingStart)) sinceTracking += m;
+
+      // Backfill counts toward the level, never toward recent pace.
+      if (m > kBackfillThresholdMinutes) continue;
       if (at.isAfter(cutoff30)) last30 += m;
       if (at.isAfter(cutoff7)) last7 += m;
-      if (!at.isBefore(_trackingStart)) sinceTracking += m;
 
       // Bucket into the last 7 calendar days, oldest first.
       final age = today.difference(DateTime(at.year, at.month, at.day)).inDays;
@@ -185,9 +174,12 @@ class PlayerSupabaseDatasource {
       }
 
       lifetime += m;
+      if (!at.isBefore(_trackingStart)) sinceTracking += m;
+
+      // Backfill counts toward the level, never toward recent pace.
+      if (m > kBackfillThresholdMinutes) continue;
       if (at.isAfter(cutoff30)) last30 += m;
       if (at.isAfter(cutoff7)) last7 += m;
-      if (!at.isBefore(_trackingStart)) sinceTracking += m;
     }
 
     final time = PlayerTimeRaw(
@@ -301,34 +293,6 @@ class PlayerSupabaseDatasource {
     }
 
     return streak;
-  }
-
-  // ── Resolve (quests) ───────────────────────────────────────────────────────
-
-  Future<PlayerResolveRaw> getResolveData() async {
-    final res = await _client
-        .from('quests')
-        .select('xp_reward, status')
-        .eq('user_id', _userId);
-
-    int xp = 0;
-    int completed = 0;
-    int active = 0;
-
-    for (final row in (res as List).cast<Map<String, dynamic>>()) {
-      if (row['status'] == 'completed') {
-        xp += row['xp_reward'] as int? ?? 0;
-        completed++;
-      } else {
-        active++;
-      }
-    }
-
-    return PlayerResolveRaw(
-      questXp: xp,
-      questsCompleted: completed,
-      questsActive: active,
-    );
   }
 
   // ── Activity history ───────────────────────────────────────────────────────

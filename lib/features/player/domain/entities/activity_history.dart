@@ -10,8 +10,8 @@ import 'dart:math';
 /// comfortable line.
 const kBackfillThresholdMinutes = 480;
 
-/// The three things worth looking at day by day. Wealth and Resolve move in
-/// months, not days, so they have no place on a calendar.
+/// The three things worth looking at day by day. Wealth moves in months, not
+/// days, so it has no place on a calendar.
 enum HistoryTrack { japanese, mindfulness, sobriety }
 
 extension HistoryTrackX on HistoryTrack {

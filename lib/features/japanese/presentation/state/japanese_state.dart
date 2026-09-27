@@ -1,3 +1,4 @@
+import '../../domain/entities/japanese_milestone.dart';
 import '../../domain/entities/japanese_session.dart';
 import '../../domain/entities/japanese_stats.dart';
 
@@ -8,6 +9,7 @@ class JapaneseState {
   final LoadStatus sessionsStatus;
   final JapaneseStats? stats;
   final List<JapaneseSession> todaySessions;
+  final JapaneseMilestone milestone;
   final String? errorMessage;
 
   const JapaneseState({
@@ -15,6 +17,7 @@ class JapaneseState {
     required this.sessionsStatus,
     this.stats,
     required this.todaySessions,
+    this.milestone = JapaneseMilestone.fallback,
     this.errorMessage,
   });
 
@@ -34,6 +37,7 @@ class JapaneseState {
     LoadStatus? sessionsStatus,
     JapaneseStats? stats,
     List<JapaneseSession>? todaySessions,
+    JapaneseMilestone? milestone,
     String? errorMessage,
   }) {
     return JapaneseState(
@@ -41,6 +45,7 @@ class JapaneseState {
       sessionsStatus: sessionsStatus ?? this.sessionsStatus,
       stats: stats ?? this.stats,
       todaySessions: todaySessions ?? this.todaySessions,
+      milestone: milestone ?? this.milestone,
       errorMessage: errorMessage,
     );
   }

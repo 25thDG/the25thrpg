@@ -12,8 +12,5 @@ Color skillColor(SkillId id) {
       return const Color(0xFF10B981);
     case SkillId.mindfulness:
       return const Color(0xFF26A69A);
-    case SkillId.resolve:
-      // Matches the amber used across the Quests tab.
-      return const Color(0xFFF59E0B);
   }
 }

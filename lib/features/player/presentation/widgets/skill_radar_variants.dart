@@ -16,8 +16,10 @@ const _order = [
   SkillId.japanese,
   SkillId.wealth,
   SkillId.mindfulness,
-  SkillId.resolve,
 ];
+
+/// Axis count — every variant spaces its points evenly around the circle.
+final int _n = _order.length;
 
 const _gridColor = Color(0xFF8FA8C8);
 
@@ -29,15 +31,18 @@ Map<SkillId, SkillSummary> _byId(List<SkillSummary> skills) =>
 double _frac(SkillSummary? s, int axisMax) =>
     ((s?.level ?? 1) / axisMax).clamp(0.08, 1.0);
 
-double _angle(int i) => -pi / 2 + (pi / 2) * i;
+/// [rot] turns the whole figure clockwise, in radians.
+double _angle(int i, [double rot = 0]) => -pi / 2 + rot + (2 * pi / _n) * i;
 
-Offset _at(Offset c, double r, int i) =>
-    Offset(c.dx + r * cos(_angle(i)), c.dy + r * sin(_angle(i)));
+Offset _at(Offset c, double r, int i, [double rot = 0]) => Offset(
+      c.dx + r * cos(_angle(i, rot)),
+      c.dy + r * sin(_angle(i, rot)),
+    );
 
 double _radiusFor(Size size) =>
     min((size.width - 132) / 2, (size.height - 104) / 2);
 
-enum _Anchor { above, below, middle }
+enum _Anchor { above, below, left, right }
 
 /// Skill name over its level — identical on every variant.
 void _paintLabel(Canvas canvas, Offset at, SkillId id, int lvl, _Anchor a) {
@@ -85,21 +90,30 @@ void _paintLabel(Canvas canvas, Offset at, SkillId id, int lvl, _Anchor a) {
   final top = switch (a) {
     _Anchor.above => at.dy - blockH - 2,
     _Anchor.below => at.dy + 2,
-    _Anchor.middle => at.dy - blockH / 2,
+    _Anchor.left || _Anchor.right => at.dy - blockH / 2,
   };
 
-  name.paint(canvas, Offset(at.dx - name.width / 2, top));
-  level.paint(
-    canvas,
-    Offset(at.dx - level.width / 2, top + name.height + 1),
-  );
+  // Side labels sit beside their point rather than centred on it, so they
+  // clear the tip of the shape.
+  double x(TextPainter t) => switch (a) {
+        _Anchor.right => at.dx - 4,
+        _Anchor.left => at.dx + 4 - t.width,
+        _ => at.dx - t.width / 2,
+      };
+
+  name.paint(canvas, Offset(x(name), top));
+  level.paint(canvas, Offset(x(level), top + name.height + 1));
 }
 
-_Anchor _anchorFor(int i) => switch (i) {
-      0 => _Anchor.above,
-      2 => _Anchor.below,
-      _ => _Anchor.middle,
-    };
+/// Labels near the top sit above their point, near the bottom below it, and
+/// to the sides beside it, facing outward.
+_Anchor _anchorFor(int i, [double rot = 0]) {
+  final a = _angle(i, rot);
+  final y = sin(a);
+  if (y < -0.7) return _Anchor.above;
+  if (y > 0.7) return _Anchor.below;
+  return cos(a) >= 0 ? _Anchor.right : _Anchor.left;
+}
 
 /// The soft light at the centre, shared by the radial variants.
 void _paintCore(Canvas canvas, Offset c, {double radius = 34}) {
@@ -210,7 +224,7 @@ class _AuraPainter extends CustomPainter {
     }
 
     final pts = [
-      for (int i = 0; i < 4; i++)
+      for (int i = 0; i < _n; i++)
         _at(c, r * _frac(m[_order[i]], axisMax), i),
     ];
     final path = _spline(pts);
@@ -238,7 +252,7 @@ class _AuraPainter extends CustomPainter {
       core: const Color(0xFFFFD9D2),
     );
 
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < _n; i++) {
       final p = pts[i];
       final color = skillColor(_order[i]);
       canvas.drawCircle(
@@ -309,7 +323,7 @@ class RadarOrbits extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 34),
           child: Row(
             children: [
-              for (int i = 0; i < 4; i++)
+              for (int i = 0; i < _n; i++)
                 Expanded(
                   child: _OrbitKey(
                     id: _order[i],
@@ -392,7 +406,7 @@ class _OrbitsPainter extends CustomPainter {
     const gap = 20.0;
     const w = 9.0;
 
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < _n; i++) {
       final id = _order[i];
       final color = skillColor(id);
       final rr = outer - i * gap;
@@ -504,7 +518,7 @@ class _PrismPainter extends CustomPainter {
       );
     }
 
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < _n; i++) {
       final id = _order[i];
       final color = skillColor(id);
       final a = _angle(i);
@@ -666,7 +680,7 @@ class _SonarPainter extends CustomPainter {
     );
 
     // Axes with tick marks.
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < _n; i++) {
       final a = _angle(i);
       final dir = Offset(cos(a), sin(a));
       canvas.drawLine(
@@ -713,10 +727,10 @@ class _SonarPainter extends CustomPainter {
 
     // Data shape — hard straight lines, this one is a readout not an aura.
     final pts = [
-      for (int i = 0; i < 4; i++) _at(c, r * _frac(m[_order[i]], axisMax), i),
+      for (int i = 0; i < _n; i++) _at(c, r * _frac(m[_order[i]], axisMax), i),
     ];
     final path = Path()..moveTo(pts[0].dx, pts[0].dy);
-    for (int i = 1; i < 4; i++) {
+    for (int i = 1; i < _n; i++) {
       path.lineTo(pts[i].dx, pts[i].dy);
     }
     path.close();
@@ -735,7 +749,7 @@ class _SonarPainter extends CustomPainter {
     );
 
     // Square nodes read as instrument markers rather than dots.
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < _n; i++) {
       final color = skillColor(_order[i]);
       canvas.drawRect(
         Rect.fromCenter(center: pts[i], width: 7, height: 7),
@@ -791,7 +805,7 @@ class _MonolithPainter extends CustomPainter {
     final m = _byId(skills);
     const padX = 30.0;
     const barW = 40.0;
-    final slot = (size.width - padX * 2) / 4;
+    final slot = (size.width - padX * 2) / _n;
     final baseY = size.height - 44;
     final maxH = baseY - 54;
 
@@ -804,7 +818,7 @@ class _MonolithPainter extends CustomPainter {
         ..color = _gridColor.withValues(alpha: 0.16),
     );
 
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < _n; i++) {
       final id = _order[i];
       final color = skillColor(id);
       final lvl = m[id]?.level ?? 1;
@@ -901,21 +915,28 @@ class _MonolithPainter extends CustomPainter {
 
 // ══ F · CRYSTAL ═══════════════════════════════════════════════════════════════
 
-/// The diamond cut into four facets, each one owned by its skill. The
-/// silhouette is still a single gem, but every quadrant is tinted by the skill
-/// that built it, so colour tells you which side of the character is heavy.
+/// The radar cut into facets, one between each pair of neighbouring skills.
+/// The silhouette is still a single gem, but every facet is tinted by the
+/// skills that built it, so colour tells you which side of the character is
+/// heavy.
 class RadarCrystal extends StatelessWidget {
   final List<SkillSummary> skills;
 
-  const RadarCrystal({super.key, required this.skills});
+  /// Turns the gem clockwise, in radians.
+  final double rotation;
+
+  const RadarCrystal({super.key, required this.skills, this.rotation = 0});
 
   @override
   Widget build(BuildContext context) => SizedBox(
         width: double.infinity,
         height: 340,
         child: CustomPaint(
-          painter:
-              _CrystalPainter(skills: skills, axisMax: radarAxisMax(skills)),
+          painter: _CrystalPainter(
+            skills: skills,
+            axisMax: radarAxisMax(skills),
+            rotation: rotation,
+          ),
         ),
       );
 }
@@ -923,19 +944,32 @@ class RadarCrystal extends StatelessWidget {
 class _CrystalPainter extends CustomPainter {
   final List<SkillSummary> skills;
   final int axisMax;
+  final double rotation;
 
-  _CrystalPainter({required this.skills, required this.axisMax});
+  _CrystalPainter({
+    required this.skills,
+    required this.axisMax,
+    required this.rotation,
+  });
 
   @override
   void paint(Canvas canvas, Size size) {
-    final c = Offset(size.width / 2, size.height / 2);
     final r = _radiusFor(size);
+    // Centre the figure, not the circle it is drawn in — a triangle reaches
+    // only halfway back from its flat side, so it would sit off-centre.
+    var top = 0.0, bottom = 0.0;
+    for (int i = 0; i < _n; i++) {
+      final y = sin(_angle(i, rotation));
+      top = min(top, y);
+      bottom = max(bottom, y);
+    }
+    final c = Offset(size.width / 2, size.height / 2 - (top + bottom) / 2 * r);
     final m = _byId(skills);
 
     // Outline of the full arena, so the gem has something to sit in.
     final hull = Path();
-    for (int i = 0; i < 4; i++) {
-      final p = _at(c, r, i);
+    for (int i = 0; i < _n; i++) {
+      final p = _at(c, r, i, rotation);
       i == 0 ? hull.moveTo(p.dx, p.dy) : hull.lineTo(p.dx, p.dy);
     }
     hull.close();
@@ -948,16 +982,17 @@ class _CrystalPainter extends CustomPainter {
     );
 
     final pts = [
-      for (int i = 0; i < 4; i++) _at(c, r * _frac(m[_order[i]], axisMax), i),
+      for (int i = 0; i < _n; i++)
+        _at(c, r * _frac(m[_order[i]], axisMax), i, rotation),
     ];
 
     // One facet per quadrant, blending the two skills that form its edge.
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < _n; i++) {
       final a = pts[i];
-      final b = pts[(i + 1) % 4];
+      final b = pts[(i + 1) % _n];
       final blend = Color.lerp(
         skillColor(_order[i]),
-        skillColor(_order[(i + 1) % 4]),
+        skillColor(_order[(i + 1) % _n]),
         0.5,
       )!;
 
@@ -991,7 +1026,7 @@ class _CrystalPainter extends CustomPainter {
     }
 
     // Internal edges from the core out to each vertex — the cut lines.
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < _n; i++) {
       final color = skillColor(_order[i]);
       canvas.drawLine(
         c,
@@ -1012,7 +1047,7 @@ class _CrystalPainter extends CustomPainter {
 
     _paintCore(canvas, c, radius: 26);
 
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < _n; i++) {
       final color = skillColor(_order[i]);
       canvas.drawCircle(
         pts[i],
@@ -1022,14 +1057,16 @@ class _CrystalPainter extends CustomPainter {
           ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8),
       );
       canvas.drawCircle(pts[i], 3.6, Paint()..color = const Color(0xFFFFFFFF));
-      _paintLabel(canvas, _at(c, r + 15, i), _order[i],
-          m[_order[i]]?.level ?? 1, _anchorFor(i));
+      _paintLabel(canvas, _at(c, r + 15, i, rotation), _order[i],
+          m[_order[i]]?.level ?? 1, _anchorFor(i, rotation));
     }
   }
 
   @override
   bool shouldRepaint(covariant _CrystalPainter old) =>
-      old.skills != skills || old.axisMax != axisMax;
+      old.skills != skills ||
+      old.axisMax != axisMax ||
+      old.rotation != rotation;
 }
 
 // ══ G · BLOOM ═════════════════════════════════════════════════════════════════
@@ -1072,7 +1109,7 @@ class _BloomPainter extends CustomPainter {
         ..color = _gridColor.withValues(alpha: 0.14),
     );
 
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < _n; i++) {
       final id = _order[i];
       final color = skillColor(id);
       final a = _angle(i);
@@ -1166,7 +1203,7 @@ class RadarNotches extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 34),
           child: Row(
             children: [
-              for (int i = 0; i < 4; i++)
+              for (int i = 0; i < _n; i++)
                 Expanded(
                   child: _OrbitKey(
                     id: _order[i],
@@ -1199,7 +1236,7 @@ class _NotchesPainter extends CustomPainter {
     final seg = 2 * pi / axisMax;
     final pad = seg * 0.22; // dark sliver between notches
 
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < _n; i++) {
       final id = _order[i];
       final color = skillColor(id);
       final rr = outer - i * gap;
@@ -1247,7 +1284,7 @@ class _NotchesPainter extends CustomPainter {
 
 // ══ I · CONSTELLATION ═════════════════════════════════════════════════════════
 
-/// The character as a star map. The four skills are stars whose brightness and
+/// The character as a star map. The skills are stars whose brightness and
 /// flare grow with level, joined by faint lines into one constellation. The
 /// quietest of all the variants — almost nothing but the dark and four points.
 class RadarConstellation extends StatelessWidget {
@@ -1294,21 +1331,21 @@ class _ConstellationPainter extends CustomPainter {
     }
 
     final pts = [
-      for (int i = 0; i < 4; i++) _at(c, r * _frac(m[_order[i]], axisMax), i),
+      for (int i = 0; i < _n; i++) _at(c, r * _frac(m[_order[i]], axisMax), i),
     ];
 
     // Constellation lines.
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < _n; i++) {
       canvas.drawLine(
         pts[i],
-        pts[(i + 1) % 4],
+        pts[(i + 1) % _n],
         Paint()
           ..strokeWidth = 0.9
           ..color = const Color(0xFFBFCBE0).withValues(alpha: 0.30),
       );
     }
 
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < _n; i++) {
       final p = pts[i];
       final color = skillColor(_order[i]);
       final f = _frac(m[_order[i]], axisMax);
@@ -1382,15 +1419,16 @@ class _RosePainter extends CustomPainter {
       );
     }
 
-    const half = 42 * pi / 180; // 4° of night between wedges
+    // Each wedge fills its share of the circle less a few degrees of night.
+    final half = pi / _n - 3 * pi / 180;
 
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < _n; i++) {
       final id = _order[i];
       final color = skillColor(id);
       final rad = r * _frac(m[id], axisMax);
       final rect = Rect.fromCircle(center: c, radius: rad);
       final start = _angle(i) - half;
-      const sweep = half * 2;
+      final sweep = half * 2;
 
       // Built as one closed path: drawArc(useCenter: true) fans the wedge into
       // triangles and the seams show straight through a shader.
@@ -1442,7 +1480,7 @@ class _RosePainter extends CustomPainter {
 
 // ══ K · RIDGE ═════════════════════════════════════════════════════════════════
 
-/// The four skills as a landscape: a lit ridgeline with a peak for each, filled
+/// The skills as a landscape: a lit ridgeline with a peak for each, filled
 /// underneath. Reads left to right like a chart rather than out from a centre,
 /// which makes the ranking obvious at the cost of the radial symmetry.
 class RadarRidge extends StatelessWidget {
@@ -1475,7 +1513,7 @@ class _RidgePainter extends CustomPainter {
     final step = (size.width - padX * 2) / 3;
 
     final peaks = [
-      for (int i = 0; i < 4; i++)
+      for (int i = 0; i < _n; i++)
         Offset(
           padX + step * i,
           baseY - (14 + (maxH - 14) * _frac(m[_order[i]], axisMax)),
@@ -1528,7 +1566,7 @@ class _RidgePainter extends CustomPainter {
         ..color = _gridColor.withValues(alpha: 0.16),
     );
 
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < _n; i++) {
       final id = _order[i];
       final color = skillColor(id);
       final p = peaks[i];
@@ -1625,16 +1663,16 @@ class _HaloPainter extends CustomPainter {
     final m = _byId(skills);
     // Butt caps and a wide gap: a round cap overhangs by half the stroke, so a
     // thick quarter used to run into its neighbour and the four read as one.
-    const half = 39 * pi / 180;
+    final half = pi / _n - 6 * pi / 180;
 
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < _n; i++) {
       final id = _order[i];
       final color = skillColor(id);
       final f = _frac(m[id], axisMax);
       final w = 5 + 26 * f;
       final rect = Rect.fromCircle(center: c, radius: r);
       final start = _angle(i) - half;
-      const sweep = half * 2;
+      final sweep = half * 2;
 
       canvas.drawArc(
         rect,

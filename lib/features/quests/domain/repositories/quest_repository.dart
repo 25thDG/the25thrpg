@@ -4,7 +4,6 @@ import '../entities/quest.dart';
 class QuestDraft {
   final String title;
   final String? description;
-  final int xpReward;
   final QuestDifficulty difficulty;
   final List<QuestObjective> objectives;
   final DateTime? targetDate;
@@ -14,7 +13,6 @@ class QuestDraft {
   const QuestDraft({
     required this.title,
     this.description,
-    required this.xpReward,
     required this.difficulty,
     required this.objectives,
     this.targetDate,

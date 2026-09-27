@@ -11,11 +11,10 @@ class PlayerRepositoryImpl implements PlayerRepository {
 
   @override
   Future<PlayerStats> getPlayerStats() async {
-    final (japanese, mindfulness, wealth, resolve, streak) = await (
+    final (japanese, mindfulness, wealth, streak) = await (
       _datasource.getJapaneseData(),
       _datasource.getMindfulnessData(),
       _datasource.getWealthData(),
-      _datasource.getResolveData(),
       _datasource.getGlobalStreak(),
     ).wait;
 
@@ -45,12 +44,6 @@ class PlayerRepositoryImpl implements PlayerRepository {
         relapseDays: sobriety.relapseDays,
         daysSinceLastCleanLog: sobriety.daysSinceLastLog,
         last14CleanDays: sobriety.last14Days,
-      ),
-      SkillSummary(
-        skill: SkillId.resolve,
-        questXp: resolve.questXp,
-        questsCompleted: resolve.questsCompleted,
-        questsActive: resolve.questsActive,
       ),
     ];
 

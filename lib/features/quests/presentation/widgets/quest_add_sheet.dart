@@ -34,7 +34,6 @@ class QuestAddSheet extends StatefulWidget {
 class _QuestAddSheetState extends State<QuestAddSheet> {
   final _titleController = TextEditingController();
   final _descController = TextEditingController();
-  final _xpController = TextEditingController();
   final _objectiveController = TextEditingController();
   final _rewardController = TextEditingController();
   final _rewardCostController = TextEditingController();
@@ -50,7 +49,6 @@ class _QuestAddSheetState extends State<QuestAddSheet> {
     if (q != null) {
       _titleController.text = q.title;
       _descController.text = q.description ?? '';
-      _xpController.text = '${q.xpReward}';
       _difficulty = q.difficulty;
       _objectives = q.objectives
           .map((o) => _DraftObjective(id: o.id, text: o.text, completed: o.completed))
@@ -60,8 +58,6 @@ class _QuestAddSheetState extends State<QuestAddSheet> {
       _rewardCostController.text = q.rewardCostCents != null
           ? (q.rewardCostCents! / 100).toStringAsFixed(0)
           : '';
-    } else {
-      _xpController.text = '${QuestDifficulty.normal.defaultXp}';
     }
   }
 
@@ -69,7 +65,6 @@ class _QuestAddSheetState extends State<QuestAddSheet> {
   void dispose() {
     _titleController.dispose();
     _descController.dispose();
-    _xpController.dispose();
     _objectiveController.dispose();
     _rewardController.dispose();
     _rewardCostController.dispose();
@@ -98,13 +93,7 @@ class _QuestAddSheetState extends State<QuestAddSheet> {
   }
 
   void _onDifficultyChanged(QuestDifficulty d) {
-    setState(() {
-      _difficulty = d;
-      if (widget.existing == null ||
-          _xpController.text == '${widget.existing!.difficulty.defaultXp}') {
-        _xpController.text = '${d.defaultXp}';
-      }
-    });
+    setState(() => _difficulty = d);
   }
 
   void _addObjective() {
@@ -123,7 +112,6 @@ class _QuestAddSheetState extends State<QuestAddSheet> {
   void _submit() {
     final title = _titleController.text.trim();
     if (title.isEmpty) return;
-    final xp = int.tryParse(_xpController.text.trim()) ?? _difficulty.defaultXp;
     final objectives = _objectives
         .map((o) => QuestObjective(id: o.id, text: o.text, completed: o.completed))
         .toList();
@@ -137,7 +125,6 @@ class _QuestAddSheetState extends State<QuestAddSheet> {
         description: _descController.text.trim().isEmpty
             ? null
             : _descController.text.trim(),
-        xpReward: xp,
         difficulty: _difficulty,
         objectives: objectives,
         targetDate: _targetDate,
@@ -255,45 +242,6 @@ class _QuestAddSheetState extends State<QuestAddSheet> {
                         ),
                       );
                     }).toList(),
-                  ),
-                  const SizedBox(height: 16),
-
-                  // XP Reward
-                  _label('XP REWARD'),
-                  const SizedBox(height: 8),
-                  SizedBox(
-                    width: 120,
-                    child: TextFormField(
-                      controller: _xpController,
-                      keyboardType: TextInputType.number,
-                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                      style: TextStyle(
-                        color: _difficultyColors[_difficulty],
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                      ),
-                      decoration: InputDecoration(
-                        suffixText: 'XP',
-                        suffixStyle: const TextStyle(
-                          color: RpgColors.textMuted,
-                          fontSize: 12,
-                        ),
-                        filled: true,
-                        fillColor: RpgColors.panelBgAlt,
-                        contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 10),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(4),
-                          borderSide:
-                              const BorderSide(color: RpgColors.border),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(4),
-                          borderSide: BorderSide(
-                              color: _colorQuest.withValues(alpha: 0.6)),
-                        ),
-                      ),
-                    ),
                   ),
                   const SizedBox(height: 20),
 
@@ -536,7 +484,6 @@ class _DraftObjective {
 class QuestFormResult {
   final String title;
   final String? description;
-  final int xpReward;
   final QuestDifficulty difficulty;
   final List<QuestObjective> objectives;
   final DateTime? targetDate;
@@ -546,7 +493,6 @@ class QuestFormResult {
   const QuestFormResult({
     required this.title,
     this.description,
-    required this.xpReward,
     required this.difficulty,
     required this.objectives,
     this.targetDate,

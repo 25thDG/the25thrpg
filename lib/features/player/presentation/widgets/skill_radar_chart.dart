@@ -15,7 +15,7 @@ const _labelGap = 15.0; // gap between vertex and label anchor
 const _coreRadius = 42.0;
 
 /// Number of axes drawn — one per skill on the character sheet.
-const kRadarAxes = 4;
+final int kRadarAxes = SkillId.values.length;
 
 /// Half-extents of the unit polygon (radius 1) in each direction, so the box
 /// can be sized for any number of axes rather than a hardcoded triangle.
@@ -146,13 +146,11 @@ class _RadarPainter extends CustomPainter {
     required this.animationValue,
   });
 
-  /// Clockwise from the top. Resolve sits opposite Wealth so the two
-  /// non-time skills balance the shape.
+  /// Clockwise from the top.
   static const _displayOrder = [
     SkillId.japanese,
     SkillId.wealth,
     SkillId.mindfulness,
-    SkillId.resolve,
   ];
 
   /// Linear against the zoomed axis, so a 26-vs-9 gap looks like a 26-vs-9 gap.
@@ -356,12 +354,13 @@ class _RadarPainter extends CustomPainter {
 
       final blockH = namePainter.height + 1 + levelPainter.height;
 
-      // Top vertex: block sits above it. Bottom vertex: below it.
-      // Side vertices: centred on the anchor.
+      // Upper vertices: block sits above. Lower vertices — including the two
+      // bottom corners of a triangle — below, clear of the outline. Only true
+      // side vertices are centred on the anchor.
       final sinA = sin(angle);
-      final topY = sinA < -0.9
+      final topY = sinA < -0.3
           ? anchor.dy - blockH - 2
-          : (sinA > 0.9 ? anchor.dy + 2 : anchor.dy - blockH / 2);
+          : (sinA > 0.3 ? anchor.dy + 2 : anchor.dy - blockH / 2);
 
       namePainter.paint(
           canvas, Offset(anchor.dx - namePainter.width / 2, topY));
