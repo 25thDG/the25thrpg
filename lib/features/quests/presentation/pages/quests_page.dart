@@ -259,6 +259,7 @@ class _QuestsPageState extends State<QuestsPage> {
               if (active.isEmpty) const EmptyBoardNote(),
               for (final q in active)
                 QuestNotice(
+                  key: ValueKey(q.id),
                   quest: q,
                   onEdit: () => _handleEdit(q),
                   onComplete: () => _handleComplete(q),

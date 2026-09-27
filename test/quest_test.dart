@@ -1,7 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:the25thrpg/features/quests/domain/entities/quest.dart';
+import 'package:the25thrpg/features/quests/presentation/state/quest_state.dart';
 
 Quest _quest({
+  String id = 'q1',
   QuestStatus status = QuestStatus.active,
   List<QuestObjective> objectives = const [],
   DateTime? createdAt,
@@ -12,7 +14,7 @@ Quest _quest({
   DateTime? completedAt,
 }) =>
     Quest(
-      id: 'q1',
+      id: id,
       title: 'Test quest',
       difficulty: QuestDifficulty.epic,
       status: status,
@@ -168,6 +170,32 @@ void main() {
     test('a deadline can be removed', () {
       final q = _quest(targetDate: DateTime.now().add(const Duration(days: 10)));
       expect(q.copyWith(targetDate: null).targetDate, isNull);
+    });
+  });
+
+  group('board order', () {
+    DateTime inDays(int d) => DateTime.now().add(Duration(days: d));
+
+    test('overdue first, then nearest deadline, then no deadline', () {
+      final state = QuestState(quests: [
+        _quest(id: 'none'),
+        _quest(id: 'far', targetDate: inDays(90)),
+        _quest(id: 'overdue', targetDate: inDays(-3)),
+        _quest(id: 'soon', targetDate: inDays(5)),
+      ]);
+      expect(
+        state.activeQuests.map((q) => q.id),
+        ['overdue', 'soon', 'far', 'none'],
+      );
+    });
+
+    test('ties keep their loaded order and fulfilled quests are left out', () {
+      final state = QuestState(quests: [
+        _quest(id: 'newer'),
+        _quest(id: 'done', status: QuestStatus.completed),
+        _quest(id: 'older'),
+      ]);
+      expect(state.activeQuests.map((q) => q.id), ['newer', 'older']);
     });
   });
 }

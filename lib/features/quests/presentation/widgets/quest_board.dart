@@ -56,6 +56,11 @@ TextStyle _label(Color color, {double size = 10.5}) =>
 
 String _fmtDate(DateTime d) => '${d.day} ${_months[d.month - 1]} ${d.year}';
 
+/// "6 Dec", with the year only when it isn't this one.
+String _fmtShortDate(DateTime d) => d.year == DateTime.now().year
+    ? '${d.day} ${_months[d.month - 1]}'
+    : _fmtDate(d);
+
 String _fmtDays(int days) {
   if (days == 1) return '1 day';
   if (days < 60) return '$days days';
@@ -240,24 +245,27 @@ class _Rule extends StatelessWidget {
   }
 }
 
-/// Solid neon pill for the one action a panel exists for.
+/// Neon pill: solid when the panel is waiting on it, tinted otherwise.
 class _PillButton extends StatelessWidget {
   final IconData icon;
   final String label;
   final Color color;
+  final bool solid;
   final VoidCallback onTap;
 
   const _PillButton({
     required this.icon,
     required this.label,
     required this.color,
+    this.solid = true,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
+    final fg = solid ? Colors.black : color;
     return Material(
-      color: color,
+      color: solid ? color : color.withValues(alpha: 0.14),
       shape: const StadiumBorder(),
       child: InkWell(
         onTap: onTap,
@@ -267,15 +275,49 @@ class _PillButton extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon, size: 15, color: Colors.black),
+              Icon(icon, size: 15, color: fg),
               const SizedBox(width: 6),
               Text(
                 label,
-                style: _type(14, color: Colors.black, weight: FontWeight.w700),
+                style: _type(14, color: fg, weight: FontWeight.w700),
               ),
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _Chip extends StatelessWidget {
+  final IconData icon;
+  final String text;
+  final Color color;
+
+  const _Chip({required this.icon, required this.text, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(8, 5, 10, 5),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 13, color: color),
+          const SizedBox(width: 5),
+          Flexible(
+            child: Text(
+              text,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: _type(12, color: color, weight: FontWeight.w600),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -318,7 +360,9 @@ class _CircleIconButton extends StatelessWidget {
 
 // ── An open quest ─────────────────────────────────────────────────────────────
 
-class QuestNotice extends StatelessWidget {
+/// Folded to its title, progress and terms; tap to open the tasks, reward and
+/// actions.
+class QuestNotice extends StatefulWidget {
   final Quest quest;
   final VoidCallback onEdit;
   final VoidCallback onComplete;
@@ -335,9 +379,25 @@ class QuestNotice extends StatelessWidget {
   });
 
   @override
+  State<QuestNotice> createState() => _QuestNoticeState();
+}
+
+class _QuestNoticeState extends State<QuestNotice> {
+  bool _open = false;
+
+  @override
   Widget build(BuildContext context) {
-    final q = quest;
+    final q = widget.quest;
     final rank = _rankColors[q.difficulty]!;
+    // Fulfil stays quiet until every task is ticked.
+    final ready = q.allObjectivesDone;
+    final fulfil = _PillButton(
+      icon: CupertinoIcons.checkmark,
+      label: 'Fulfil',
+      color: _mint,
+      solid: ready,
+      onTap: widget.onComplete,
+    );
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
@@ -346,84 +406,263 @@ class QuestNotice extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Column(
+            GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () => setState(() => _open = !_open),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        '${q.difficulty.displayName.toUpperCase()} QUEST',
-                        style: _label(rank),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        q.title,
-                        style: _type(
-                          20,
-                          weight: FontWeight.w700,
-                          spacing: -0.3,
-                          height: 1.2,
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '${q.difficulty.displayName.toUpperCase()} QUEST',
+                              style: _label(rank),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              q.title,
+                              style: _type(
+                                20,
+                                weight: FontWeight.w700,
+                                spacing: -0.3,
+                                height: 1.2,
+                              ),
+                            ),
+                          ],
                         ),
+                      ),
+                      const SizedBox(width: 12),
+                      _RankBadge(difficulty: q.difficulty),
+                    ],
+                  ),
+                  if (q.objectives.isNotEmpty) ...[
+                    const SizedBox(height: 16),
+                    _ProgressBar(quest: q),
+                  ],
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      if (!_open && ready) ...[
+                        fulfil,
+                        const SizedBox(width: 10),
+                      ],
+                      // The reward box takes over from its chip once open.
+                      Expanded(
+                        child: _Terms(quest: q, showReward: !_open),
+                      ),
+                      const SizedBox(width: 8),
+                      Icon(
+                        _open
+                            ? CupertinoIcons.chevron_up
+                            : CupertinoIcons.chevron_down,
+                        size: 16,
+                        color: _textMuted,
                       ),
                     ],
                   ),
-                ),
-                const SizedBox(width: 12),
-                _RankBadge(difficulty: q.difficulty),
-              ],
+                ],
+              ),
             ),
-            if (q.description != null) ...[
-              const SizedBox(height: 8),
-              Text(
-                q.description!,
-                style: _type(14, color: _textSecondary, height: 1.4),
-              ),
-            ],
-            const _Rule(),
-            if (q.objectives.isNotEmpty) ...[
-              _Objectives(quest: q, onToggle: onToggleObjective),
-              const SizedBox(height: 10),
-            ],
-            if (q.daysLeft != null) _DueLine(quest: q),
-            if (q.pace == QuestPace.onTrack || q.pace == QuestPace.behind)
-              _PaceLine(quest: q),
-            if (q.hasReward) _RewardLine(quest: q),
-            if (q.objectives.isEmpty && q.daysLeft == null && !q.hasReward)
-              Text(
-                'No terms set. Tap the pencil to add steps, a deadline or a '
-                'reward.',
-                style: _type(13, color: _textMuted, height: 1.35),
-              ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                _PillButton(
-                  icon: CupertinoIcons.checkmark,
-                  label: 'Fulfil',
-                  color: _mint,
-                  onTap: onComplete,
-                ),
-                const Spacer(),
-                _CircleIconButton(
-                  icon: CupertinoIcons.pencil,
-                  tooltip: 'Edit',
-                  onTap: onEdit,
-                ),
-                const SizedBox(width: 8),
-                _CircleIconButton(
-                  icon: CupertinoIcons.trash,
-                  tooltip: 'Tear down',
-                  onTap: onDelete,
-                  color: _red,
-                ),
-              ],
+            AnimatedSize(
+              duration: const Duration(milliseconds: 220),
+              curve: Curves.easeOutCubic,
+              alignment: Alignment.topCenter,
+              child: _open
+                  ? _details(q, fulfil)
+                  : const SizedBox(width: double.infinity),
             ),
           ],
         ),
       ),
     );
+  }
+
+  Widget _details(Quest q, Widget fulfil) {
+    return SizedBox(
+      width: double.infinity,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (q.description != null) ...[
+            const SizedBox(height: 14),
+            Text(
+              q.description!,
+              style: _type(14, color: _textSecondary, height: 1.4),
+            ),
+          ],
+          const _Rule(),
+          if (q.objectives.isNotEmpty) ...[
+            _Objectives(quest: q, onToggle: widget.onToggleObjective),
+            const SizedBox(height: 10),
+          ],
+          if (q.hasReward) _RewardLine(quest: q),
+          if (q.objectives.isEmpty && q.daysLeft == null && !q.hasReward)
+            Text(
+              'No terms set. Tap the pencil to add steps, a deadline or a '
+              'reward.',
+              style: _type(13, color: _textMuted, height: 1.35),
+            ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              fulfil,
+              const Spacer(),
+              _CircleIconButton(
+                icon: CupertinoIcons.pencil,
+                tooltip: 'Edit',
+                onTap: widget.onEdit,
+              ),
+              const SizedBox(width: 8),
+              _CircleIconButton(
+                icon: CupertinoIcons.trash,
+                tooltip: 'Tear down',
+                onTap: widget.onDelete,
+                color: _red,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Tasks done as a bar, coloured by pace; the tick marks how much of the time
+/// to the deadline has gone.
+class _ProgressBar extends StatelessWidget {
+  final Quest quest;
+
+  const _ProgressBar({required this.quest});
+
+  @override
+  Widget build(BuildContext context) {
+    final done = quest.objectiveFraction!;
+    final elapsed = quest.timeElapsedFraction;
+    final color = switch (quest.pace) {
+      QuestPace.behind => _amber,
+      QuestPace.overdue => _red,
+      _ => _mint,
+    };
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          height: 12,
+          child: LayoutBuilder(
+            builder: (context, c) {
+              final w = c.maxWidth;
+              return Stack(
+                clipBehavior: Clip.none,
+                alignment: Alignment.centerLeft,
+                children: [
+                  Container(
+                    height: 6,
+                    decoration: BoxDecoration(
+                      color: _hairline,
+                      borderRadius: BorderRadius.circular(3),
+                    ),
+                  ),
+                  Container(
+                    width: w * done,
+                    height: 6,
+                    decoration: BoxDecoration(
+                      color: color,
+                      borderRadius: BorderRadius.circular(3),
+                    ),
+                  ),
+                  if (elapsed != null)
+                    Positioned(
+                      left: (w * elapsed.clamp(0.0, 1.0) - 1).clamp(0.0, w - 2),
+                      top: 0,
+                      bottom: 0,
+                      child: Container(
+                        width: 2,
+                        decoration: BoxDecoration(
+                          color: _textPrimary,
+                          borderRadius: BorderRadius.circular(1),
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            },
+          ),
+        ),
+        const SizedBox(height: 6),
+        Row(
+          children: [
+            Text(
+              '${quest.completedObjectives} of ${quest.objectives.length} tasks',
+              style: _type(12, color: _textSecondary, weight: FontWeight.w600),
+            ),
+            const Spacer(),
+            if (elapsed != null)
+              Text(
+                '${(elapsed * 100).round()}% of the time gone',
+                style: _type(12, color: _textMuted),
+              ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+/// Deadline, pace and prize as chips, so a folded quest still says where it
+/// stands.
+class _Terms extends StatelessWidget {
+  final Quest quest;
+  final bool showReward;
+
+  const _Terms({required this.quest, required this.showReward});
+
+  @override
+  Widget build(BuildContext context) {
+    final q = quest;
+    final left = q.daysLeft;
+
+    return Wrap(
+      spacing: 6,
+      runSpacing: 6,
+      children: [
+        if (left != null) _due(q.targetDate!, left),
+        if (q.pace == QuestPace.onTrack)
+          const _Chip(
+            icon: CupertinoIcons.arrow_up_right,
+            text: 'On pace',
+            color: _mint,
+          ),
+        if (q.pace == QuestPace.behind)
+          const _Chip(
+            icon: CupertinoIcons.arrow_down_right,
+            text: 'Behind pace',
+            color: _amber,
+          ),
+        if (q.hasReward && showReward)
+          _Chip(
+            icon: CupertinoIcons.gift,
+            text: q.rewardText!,
+            color: _textSecondary,
+          ),
+      ],
+    );
+  }
+
+  Widget _due(DateTime target, int left) {
+    final date = _fmtShortDate(target);
+    final (text, color) = switch (left) {
+      < 0 => ('$date · ${_fmtDays(-left)} overdue', _red),
+      0 => ('Due today', _red),
+      <= 14 => ('$date · ${_fmtDays(left)} left', _amber),
+      _ => ('$date · ${_fmtDays(left)} left', _textSecondary),
+    };
+    return _Chip(icon: CupertinoIcons.calendar, text: text, color: color);
   }
 }
 
@@ -435,22 +674,10 @@ class _Objectives extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final done = quest.completedObjectives;
-    final total = quest.objectives.length;
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            Text('TASKS', style: _label(_textMuted)),
-            const Spacer(),
-            Text(
-              '$done of $total',
-              style: _type(12, color: _textSecondary, weight: FontWeight.w600),
-            ),
-          ],
-        ),
+        Text('TASKS', style: _label(_textMuted)),
         const SizedBox(height: 8),
         for (final o in quest.objectives)
           GestureDetector(
@@ -488,8 +715,9 @@ class _Objectives extends StatelessWidget {
                         15,
                         color: o.completed ? _textMuted : _textPrimary,
                         height: 1.3,
-                        decoration:
-                            o.completed ? TextDecoration.lineThrough : null,
+                        decoration: o.completed
+                            ? TextDecoration.lineThrough
+                            : null,
                       ),
                     ),
                   ),
@@ -498,82 +726,6 @@ class _Objectives extends StatelessWidget {
             ),
           ),
       ],
-    );
-  }
-}
-
-class _DueLine extends StatelessWidget {
-  final Quest quest;
-
-  const _DueLine({required this.quest});
-
-  @override
-  Widget build(BuildContext context) {
-    final left = quest.daysLeft!;
-    final date = _fmtDate(quest.targetDate!);
-    final (text, color) = switch (left) {
-      < 0 => ('Due $date — ${_fmtDays(-left)} overdue', _red),
-      0 => ('Due today', _red),
-      <= 14 => ('Due $date — ${_fmtDays(left)} left', _amber),
-      _ => ('Due $date — ${_fmtDays(left)} left', _textSecondary),
-    };
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        children: [
-          Icon(CupertinoIcons.calendar, size: 15, color: color),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              text,
-              style: _type(13.5, color: color, weight: FontWeight.w500),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Tasks done against time spent, so a quest quietly falling behind says so.
-class _PaceLine extends StatelessWidget {
-  final Quest quest;
-
-  const _PaceLine({required this.quest});
-
-  @override
-  Widget build(BuildContext context) {
-    final onTrack = quest.pace == QuestPace.onTrack;
-    final color = onTrack ? _mint : _amber;
-    final elapsed = quest.timeElapsedFraction;
-    final done = quest.objectiveFraction;
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        children: [
-          Icon(
-            onTrack
-                ? CupertinoIcons.arrow_up_right
-                : CupertinoIcons.arrow_down_right,
-            size: 15,
-            color: color,
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              [
-                onTrack ? 'On pace' : 'Behind pace',
-                if (elapsed != null && done != null)
-                  '${(done * 100).round()}% done, '
-                      '${(elapsed * 100).round()}% of the time gone',
-              ].join(' — '),
-              style: _type(13.5, color: color, weight: FontWeight.w500),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
