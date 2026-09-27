@@ -142,9 +142,9 @@ class _QuestsPageState extends State<QuestsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: RpgColors.pageBg,
+      backgroundColor: Colors.black,
       appBar: AppBar(
-        backgroundColor: RpgColors.pageBg,
+        backgroundColor: Colors.black,
         foregroundColor: RpgColors.textSecondary,
         scrolledUnderElevation: 0,
         elevation: 0,

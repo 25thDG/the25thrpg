@@ -1,35 +1,29 @@
-import 'dart:math';
-
+import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 
 import '../../domain/entities/quest.dart';
 
-// ── Palette: a tavern board — dark planks, aged parchment, iron-gall ink ─────
+// ── Palette: flat dark panels on true black, neon for what you can act on ────
 
-const _woodDark = Color(0xFF1C130C);
-const _woodMid = Color(0xFF2B1D13);
-const _woodLight = Color(0xFF342319);
-const _seam = Color(0xFF100A06);
+const _panel = Color(0xFF151517);
+const _panelRaised = Color(0xFF1C1C1E);
+const _hairline = Color(0xFF2C2C2E);
 
-const _parchmentLight = Color(0xFFF2E6C6);
-const _parchment = Color(0xFFE5D2A6);
-const _parchmentDark = Color(0xFFD3BA84);
+const _textPrimary = Color(0xFFF5F5F7);
+const _textSecondary = Color(0xFF98989F);
+const _textMuted = Color(0xFF636366);
 
-const _ink = Color(0xFF3A2716);
-const _inkFaded = Color(0xFF6E5638);
-const _inkRed = Color(0xFF9B2B1F);
-const _inkGreen = Color(0xFF2F6B35);
-const _inkAmber = Color(0xFF9A6512);
+const _mint = Color(0xFF3CF2A3);
+const _purple = Color(0xFFB45CFF);
+const _red = Color(0xFFFF4B5C);
+const _amber = Color(0xFFFFB020);
 
-/// Lettering on the wood itself — bone white, not paper.
-const _chalk = Color(0xFFE9D8B4);
-
-/// Rank as it reads on paper: wax and ink, darker than the neon elsewhere.
+/// Rank as a neon accent, bright enough to read against the dark panels.
 const _rankColors = {
-  QuestDifficulty.side: Color(0xFF56616B),
-  QuestDifficulty.normal: Color(0xFFA06A12),
-  QuestDifficulty.epic: Color(0xFF6E3A86),
-  QuestDifficulty.legendary: Color(0xFFA3261C),
+  QuestDifficulty.side: Color(0xFF8E8E93),
+  QuestDifficulty.normal: _amber,
+  QuestDifficulty.epic: _purple,
+  QuestDifficulty.legendary: _red,
 };
 
 const _months = [
@@ -37,31 +31,28 @@ const _months = [
   'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
 ];
 
-/// A system serif — Georgia on Apple platforms, Noto Serif on Android — so the
-/// notices read as print without bundling a font.
+/// The platform sans — SF Pro on Apple platforms, Roboto on Android.
 TextStyle _type(
   double size, {
-  Color color = _ink,
+  Color color = _textPrimary,
   FontWeight weight = FontWeight.w400,
-  FontStyle? style,
   double spacing = 0,
   double? height,
   TextDecoration? decoration,
-  List<Shadow>? shadows,
 }) =>
     TextStyle(
-      fontFamily: 'Georgia',
-      fontFamilyFallback: const ['serif'],
       fontSize: size,
       color: color,
       fontWeight: weight,
-      fontStyle: style,
       letterSpacing: spacing,
       height: height,
       decoration: decoration,
       decorationColor: color,
-      shadows: shadows,
     );
+
+/// Small, tracked-out caps for category labels such as "EPIC QUEST".
+TextStyle _label(Color color, {double size = 10.5}) =>
+    _type(size, color: color, weight: FontWeight.w700, spacing: 1.8);
 
 String _fmtDate(DateTime d) => '${d.day} ${_months[d.month - 1]} ${d.year}';
 
@@ -72,16 +63,9 @@ String _fmtDays(int days) {
   return '${(days / 365).toStringAsFixed(1)} years';
 }
 
-/// Notices hang a little crooked, and always the same way for the same quest.
-double _tiltFor(String id) {
-  final h = id.codeUnits.fold(0, (a, b) => (a * 31 + b) & 0x7fffffff);
-  const degrees = [-1.4, -0.6, 0.5, 1.1, -0.9, 0.8];
-  return degrees[h % degrees.length] * pi / 180;
-}
-
 // ── The board ─────────────────────────────────────────────────────────────────
 
-/// Framed planks with the sign on top; everything else is pinned to it.
+/// A header with the tallies; every panel stacks below it.
 class QuestBoard extends StatelessWidget {
   final int openCount;
   final int fulfilledCount;
@@ -96,391 +80,174 @@ class QuestBoard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 12),
-      decoration: BoxDecoration(
-        color: _woodDark,
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: _seam, width: 5),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.6),
-            blurRadius: 18,
-            offset: const Offset(0, 8),
-          ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _BoardHeader(open: openCount, fulfilled: fulfilledCount),
+          const SizedBox(height: 20),
+          ...children,
         ],
       ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(2),
-        child: CustomPaint(
-          painter: const _PlanksPainter(),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _BoardSign(open: openCount, fulfilled: fulfilledCount),
-                const SizedBox(height: 22),
-                ...children,
-              ],
-            ),
-          ),
-        ),
-      ),
     );
   }
 }
 
-class _PlanksPainter extends CustomPainter {
-  const _PlanksPainter();
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    const planks = 4;
-    const shades = [_woodMid, _woodLight, _woodMid, Color(0xFF2F2016)];
-    final w = size.width / planks;
-    // Seeded, so the grain is identical on every repaint.
-    final rnd = Random(25);
-
-    for (int i = 0; i < planks; i++) {
-      final rect = Rect.fromLTWH(i * w, 0, w, size.height);
-      final base = shades[i];
-      canvas.drawRect(
-        rect,
-        Paint()
-          ..shader = LinearGradient(
-            colors: [
-              Color.lerp(base, _woodDark, 0.4)!,
-              base,
-              Color.lerp(base, _woodDark, 0.25)!,
-            ],
-            stops: const [0.0, 0.45, 1.0],
-          ).createShader(rect),
-      );
-
-      // Grain: long wavering strokes down the plank.
-      for (int g = 0; g < 8; g++) {
-        final x = rect.left + 6 + rnd.nextDouble() * (w - 12);
-        final sway = 1.5 + rnd.nextDouble() * 3.5;
-        final period = 50 + rnd.nextDouble() * 60;
-        final path = Path()..moveTo(x, 0);
-        for (double y = 0; y <= size.height; y += 24) {
-          path.lineTo(x + sin(y / period + g) * sway, y);
-        }
-        canvas.drawPath(
-          path,
-          Paint()
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = g.isEven ? 1.0 : 0.6
-            ..color = g.isEven
-                ? Colors.black.withValues(alpha: 0.22)
-                : const Color(0xFFFFE2BF).withValues(alpha: 0.04),
-        );
-      }
-
-      // A knot or two.
-      if (rnd.nextBool()) {
-        final knot = Offset(
-          rect.left + w * (0.3 + rnd.nextDouble() * 0.4),
-          size.height * rnd.nextDouble(),
-        );
-        canvas.drawOval(
-          Rect.fromCenter(center: knot, width: 9, height: 22),
-          Paint()..color = Colors.black.withValues(alpha: 0.28),
-        );
-      }
-
-      if (i > 0) {
-        canvas.drawLine(
-          Offset(rect.left, 0),
-          Offset(rect.left, size.height),
-          Paint()
-            ..color = _seam
-            ..strokeWidth = 2.5,
-        );
-        canvas.drawLine(
-          Offset(rect.left + 2, 0),
-          Offset(rect.left + 2, size.height),
-          Paint()
-            ..color = const Color(0xFFFFE2BF).withValues(alpha: 0.05)
-            ..strokeWidth = 1,
-        );
-      }
-    }
-
-    // The edges fall into shadow under the frame.
-    final all = Offset.zero & size;
-    canvas.drawRect(
-      all,
-      Paint()
-        ..shader = LinearGradient(
-          colors: [
-            Colors.black.withValues(alpha: 0.4),
-            Colors.transparent,
-            Colors.transparent,
-            Colors.black.withValues(alpha: 0.4),
-          ],
-          stops: const [0.0, 0.1, 0.9, 1.0],
-        ).createShader(all),
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant _PlanksPainter old) => false;
-}
-
-class _BoardSign extends StatelessWidget {
+class _BoardHeader extends StatelessWidget {
   final int open;
   final int fulfilled;
 
-  const _BoardSign({required this.open, required this.fulfilled});
+  const _BoardHeader({required this.open, required this.fulfilled});
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Container(
-          margin: const EdgeInsets.only(top: 18),
-          padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [Color(0xFF5E422C), Color(0xFF3E2A1B)],
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(4, 4, 4, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Quest Board',
+            style: _type(
+              28,
+              weight: FontWeight.w800,
+              spacing: -0.6,
+              height: 1.1,
             ),
-            borderRadius: BorderRadius.circular(4),
-            border: Border.all(color: const Color(0xFF1A110A), width: 2),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.55),
-                blurRadius: 8,
-                offset: const Offset(0, 4),
-              ),
-            ],
           ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
+          const SizedBox(height: 12),
+          Row(
             children: [
-              const _Nail(),
-              const SizedBox(width: 14),
-              Text(
-                'QUEST BOARD',
-                style: _type(
-                  19,
-                  color: _chalk,
-                  weight: FontWeight.w700,
-                  spacing: 4,
-                  shadows: const [
-                    Shadow(color: Colors.black, offset: Offset(0, 1.5)),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 14),
-              const _Nail(),
+              _Tally(count: open, label: 'OPEN', color: _mint),
+              const SizedBox(width: 8),
+              _Tally(count: fulfilled, label: 'FULFILLED', color: _purple),
             ],
           ),
-        ),
-        const SizedBox(height: 10),
-        Text(
-          '$open open  ·  $fulfilled fulfilled',
-          style: _type(
-            13,
-            color: _chalk.withValues(alpha: 0.6),
-            style: FontStyle.italic,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _Nail extends StatelessWidget {
-  const _Nail();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 7,
-      height: 7,
-      decoration: const BoxDecoration(
-        shape: BoxShape.circle,
-        gradient: RadialGradient(
-          center: Alignment(-0.4, -0.4),
-          colors: [Color(0xFFB8B2A8), Color(0xFF4A4640)],
-        ),
+        ],
       ),
     );
   }
 }
 
-// ── Paper, pins and seals ─────────────────────────────────────────────────────
+class _Tally extends StatelessWidget {
+  final int count;
+  final String label;
+  final Color color;
 
-class _Parchment extends StatelessWidget {
+  const _Tally({required this.count, required this.label, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(10, 6, 12, 6),
+      decoration: BoxDecoration(
+        color: _panel,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 6,
+            height: 6,
+            decoration: BoxDecoration(shape: BoxShape.circle, color: color),
+          ),
+          const SizedBox(width: 8),
+          Text('$count', style: _type(13, weight: FontWeight.w700)),
+          const SizedBox(width: 6),
+          Text(label, style: _label(_textSecondary, size: 10)),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Panels, badges and buttons ────────────────────────────────────────────────
+
+/// A flat quest container: no shadow, no border, heavy radius.
+class _Panel extends StatelessWidget {
   final Widget child;
   final EdgeInsets padding;
 
-  const _Parchment({required this.child, required this.padding});
+  const _Panel({required this.child, required this.padding});
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: padding,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(2),
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [_parchmentLight, _parchment, _parchmentDark],
-          stops: [0.0, 0.55, 1.0],
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.55),
-            blurRadius: 10,
-            offset: const Offset(2, 7),
-          ),
-        ],
-      ),
-      // Age at the edges, over the ink as well as the paper.
-      foregroundDecoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(2),
-        gradient: const RadialGradient(
-          radius: 1.1,
-          colors: [Colors.transparent, Color(0x4D6B4520)],
-          stops: [0.6, 1.0],
-        ),
+        color: _panel,
+        borderRadius: BorderRadius.circular(20),
       ),
       child: child,
     );
   }
 }
 
-class _Pin extends StatelessWidget {
-  const _Pin();
+/// A flat circle: tinted fill, neon ring.
+class _Badge extends StatelessWidget {
+  final Color color;
+  final Widget child;
+
+  const _Badge({required this.color, required this.child});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 16,
-      height: 16,
+      width: 36,
+      height: 36,
+      alignment: Alignment.center,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        gradient: const RadialGradient(
-          center: Alignment(-0.35, -0.4),
-          colors: [Color(0xFFFF8A80), Color(0xFFC62828), Color(0xFF6E1111)],
-          stops: [0.0, 0.45, 1.0],
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.6),
-            blurRadius: 4,
-            offset: const Offset(1.5, 3),
-          ),
-        ],
+        color: color.withValues(alpha: 0.14),
+        border: Border.all(color: color, width: 1.5),
       ),
+      child: child,
     );
   }
 }
 
-/// Rank pressed in wax: the initial of the difficulty in its colour.
-class _WaxSeal extends StatelessWidget {
+/// Rank as a badge: the initial of the difficulty in its colour.
+class _RankBadge extends StatelessWidget {
   final QuestDifficulty difficulty;
 
-  const _WaxSeal({required this.difficulty});
+  const _RankBadge({required this.difficulty});
 
   @override
   Widget build(BuildContext context) {
     final color = _rankColors[difficulty]!;
-    return Transform.rotate(
-      angle: -0.2,
-      child: Container(
-        width: 40,
-        height: 40,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          gradient: RadialGradient(
-            center: const Alignment(-0.3, -0.35),
-            colors: [
-              Color.lerp(color, Colors.white, 0.25)!,
-              color,
-              Color.lerp(color, Colors.black, 0.4)!,
-            ],
-            stops: const [0.0, 0.55, 1.0],
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.35),
-              blurRadius: 3,
-              offset: const Offset(1, 2),
-            ),
-          ],
-        ),
-        child: Center(
-          child: Container(
-            width: 29,
-            height: 29,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(
-                color: Colors.black.withValues(alpha: 0.25),
-                width: 1.2,
-              ),
-            ),
-            child: Center(
-              child: Text(
-                difficulty.displayName[0],
-                style: _type(
-                  16,
-                  color: const Color(0xFFF7E9E4).withValues(alpha: 0.9),
-                  weight: FontWeight.w700,
-                ),
-              ),
-            ),
-          ),
-        ),
+    return _Badge(
+      color: color,
+      child: Text(
+        difficulty.displayName[0],
+        style: _type(15, color: color, weight: FontWeight.w800),
       ),
     );
   }
 }
 
-class _InkRule extends StatelessWidget {
-  const _InkRule();
+class _Rule extends StatelessWidget {
+  const _Rule();
 
   @override
   Widget build(BuildContext context) {
-    final line = Expanded(
-      child: Container(height: 1, color: _ink.withValues(alpha: 0.25)),
-    );
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 11),
-      child: Row(
-        children: [
-          line,
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 7),
-            child: Transform.rotate(
-              angle: pi / 4,
-              child: Container(
-                width: 5,
-                height: 5,
-                color: _ink.withValues(alpha: 0.45),
-              ),
-            ),
-          ),
-          line,
-        ],
-      ),
+    return Container(
+      height: 1,
+      margin: const EdgeInsets.symmetric(vertical: 14),
+      color: _hairline,
     );
   }
 }
 
-class _InkButton extends StatelessWidget {
+/// Solid neon pill for the one action a panel exists for.
+class _PillButton extends StatelessWidget {
   final IconData icon;
   final String label;
   final Color color;
   final VoidCallback onTap;
 
-  const _InkButton({
+  const _PillButton({
     required this.icon,
     required this.label,
     required this.color,
@@ -489,52 +256,62 @@ class _InkButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.06),
-          borderRadius: BorderRadius.circular(3),
-          border: Border.all(color: color.withValues(alpha: 0.75), width: 1.3),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 15, color: color),
-            const SizedBox(width: 5),
-            Text(
-              label,
-              style: _type(14, color: color, weight: FontWeight.w700),
-            ),
-          ],
+    return Material(
+      color: color,
+      shape: const StadiumBorder(),
+      child: InkWell(
+        onTap: onTap,
+        customBorder: const StadiumBorder(),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 15, color: Colors.black),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: _type(14, color: Colors.black, weight: FontWeight.w700),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 }
 
-class _InkIcon extends StatelessWidget {
+/// Secondary actions: a monoline icon in a flat circle.
+class _CircleIconButton extends StatelessWidget {
   final IconData icon;
   final String tooltip;
   final VoidCallback onTap;
   final Color color;
 
-  const _InkIcon({
+  const _CircleIconButton({
     required this.icon,
     required this.tooltip,
     required this.onTap,
-    this.color = _inkFaded,
+    this.color = _textSecondary,
   });
 
   @override
   Widget build(BuildContext context) {
-    return IconButton(
-      icon: Icon(icon, size: 20),
-      color: color,
-      onPressed: onTap,
-      tooltip: tooltip,
-      visualDensity: VisualDensity.compact,
+    return Tooltip(
+      message: tooltip,
+      child: Material(
+        color: _panelRaised,
+        shape: const CircleBorder(),
+        child: InkWell(
+          onTap: onTap,
+          customBorder: const CircleBorder(),
+          child: SizedBox(
+            width: 36,
+            height: 36,
+            child: Icon(icon, size: 17, color: color),
+          ),
+        ),
+      ),
     );
   }
 }
@@ -563,126 +340,85 @@ class QuestNotice extends StatelessWidget {
     final rank = _rankColors[q.difficulty]!;
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 26),
-      child: Transform.rotate(
-        angle: _tiltFor(q.id),
-        child: Stack(
-          // Pass the board's width through, so every notice spans it.
-          fit: StackFit.passthrough,
-          clipBehavior: Clip.none,
+      padding: const EdgeInsets.only(bottom: 12),
+      child: _Panel(
+        padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _Parchment(
-              padding: const EdgeInsets.fromLTRB(18, 24, 10, 8),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.only(right: 52),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '${q.difficulty.displayName.toUpperCase()} QUEST',
-                          style: _type(
-                            10,
-                            color: rank,
-                            weight: FontWeight.w700,
-                            spacing: 2.6,
-                          ),
-                        ),
-                        const SizedBox(height: 5),
-                        Text(
-                          q.title,
-                          style: _type(
-                            22,
-                            weight: FontWeight.w700,
-                            height: 1.15,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (q.description != null) ...[
-                          const SizedBox(height: 7),
-                          Text(
-                            q.description!,
-                            style: _type(
-                              14,
-                              color: _inkFaded,
-                              style: FontStyle.italic,
-                              height: 1.35,
-                            ),
-                          ),
-                        ],
-                        const _InkRule(),
-                        if (q.objectives.isNotEmpty) ...[
-                          _Objectives(
-                            quest: q,
-                            onToggle: onToggleObjective,
-                          ),
-                          const SizedBox(height: 8),
-                        ],
-                        if (q.daysLeft != null) _DueLine(quest: q),
-                        if (q.pace == QuestPace.onTrack ||
-                            q.pace == QuestPace.behind)
-                          _PaceLine(quest: q),
-                        if (q.hasReward) _RewardLine(quest: q),
-                        if (q.objectives.isEmpty &&
-                            q.daysLeft == null &&
-                            !q.hasReward)
-                          Text(
-                            'No terms set. Tap the quill to add steps, a '
-                            'deadline or a reward.',
-                            style: _type(
-                              12.5,
-                              color: _inkFaded,
-                              style: FontStyle.italic,
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _InkButton(
-                        icon: Icons.check,
-                        label: 'Fulfil',
-                        color: _inkGreen,
-                        onTap: onComplete,
+                      Text(
+                        '${q.difficulty.displayName.toUpperCase()} QUEST',
+                        style: _label(rank),
                       ),
-                      const Spacer(),
-                      _InkIcon(
-                        icon: Icons.history_edu,
-                        tooltip: 'Edit',
-                        onTap: onEdit,
-                      ),
-                      _InkIcon(
-                        icon: Icons.close,
-                        tooltip: 'Tear down',
-                        onTap: onDelete,
-                        color: _inkRed,
+                      const SizedBox(height: 6),
+                      Text(
+                        q.title,
+                        style: _type(
+                          20,
+                          weight: FontWeight.w700,
+                          spacing: -0.3,
+                          height: 1.2,
+                        ),
                       ),
                     ],
                   ),
-                ],
+                ),
+                const SizedBox(width: 12),
+                _RankBadge(difficulty: q.difficulty),
+              ],
+            ),
+            if (q.description != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                q.description!,
+                style: _type(14, color: _textSecondary, height: 1.4),
               ),
-            ),
-            const Positioned(
-              top: -7,
-              left: 0,
-              right: 0,
-              child: Center(child: _Pin()),
-            ),
-            Positioned(
-              top: 16,
-              right: 14,
-              child: _WaxSeal(difficulty: q.difficulty),
+            ],
+            const _Rule(),
+            if (q.objectives.isNotEmpty) ...[
+              _Objectives(quest: q, onToggle: onToggleObjective),
+              const SizedBox(height: 10),
+            ],
+            if (q.daysLeft != null) _DueLine(quest: q),
+            if (q.pace == QuestPace.onTrack || q.pace == QuestPace.behind)
+              _PaceLine(quest: q),
+            if (q.hasReward) _RewardLine(quest: q),
+            if (q.objectives.isEmpty && q.daysLeft == null && !q.hasReward)
+              Text(
+                'No terms set. Tap the pencil to add steps, a deadline or a '
+                'reward.',
+                style: _type(13, color: _textMuted, height: 1.35),
+              ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                _PillButton(
+                  icon: CupertinoIcons.checkmark,
+                  label: 'Fulfil',
+                  color: _mint,
+                  onTap: onComplete,
+                ),
+                const Spacer(),
+                _CircleIconButton(
+                  icon: CupertinoIcons.pencil,
+                  tooltip: 'Edit',
+                  onTap: onEdit,
+                ),
+                const SizedBox(width: 8),
+                _CircleIconButton(
+                  icon: CupertinoIcons.trash,
+                  tooltip: 'Tear down',
+                  onTap: onDelete,
+                  color: _red,
+                ),
+              ],
             ),
           ],
         ),
@@ -707,54 +443,50 @@ class _Objectives extends StatelessWidget {
       children: [
         Row(
           children: [
-            Text(
-              'TASKS',
-              style: _type(
-                10,
-                color: _inkFaded,
-                weight: FontWeight.w700,
-                spacing: 2.4,
-              ),
-            ),
+            Text('TASKS', style: _label(_textMuted)),
             const Spacer(),
             Text(
               '$done of $total',
-              style: _type(12, color: _inkFaded, style: FontStyle.italic),
+              style: _type(12, color: _textSecondary, weight: FontWeight.w600),
             ),
           ],
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: 8),
         for (final o in quest.objectives)
           GestureDetector(
             behavior: HitTestBehavior.opaque,
             onTap: () => onToggle(o.id),
             child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 4),
+              padding: const EdgeInsets.symmetric(vertical: 5),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Container(
-                    margin: const EdgeInsets.only(top: 2),
-                    width: 16,
-                    height: 16,
+                    margin: const EdgeInsets.only(top: 1),
+                    width: 18,
+                    height: 18,
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(2),
-                      border: Border.all(
-                        color: _ink.withValues(alpha: 0.7),
-                        width: 1.3,
-                      ),
+                      shape: BoxShape.circle,
+                      color: o.completed ? _mint : null,
+                      border: o.completed
+                          ? null
+                          : Border.all(color: _textMuted, width: 1.5),
                     ),
                     child: o.completed
-                        ? const Icon(Icons.check, size: 14, color: _inkGreen)
+                        ? const Icon(
+                            CupertinoIcons.checkmark,
+                            size: 12,
+                            color: Colors.black,
+                          )
                         : null,
                   ),
-                  const SizedBox(width: 9),
+                  const SizedBox(width: 10),
                   Expanded(
                     child: Text(
                       o.text,
                       style: _type(
                         15,
-                        color: o.completed ? _inkFaded : _ink,
+                        color: o.completed ? _textMuted : _textPrimary,
                         height: 1.3,
                         decoration:
                             o.completed ? TextDecoration.lineThrough : null,
@@ -780,22 +512,22 @@ class _DueLine extends StatelessWidget {
     final left = quest.daysLeft!;
     final date = _fmtDate(quest.targetDate!);
     final (text, color) = switch (left) {
-      < 0 => ('Due $date — ${_fmtDays(-left)} overdue', _inkRed),
-      0 => ('Due today', _inkRed),
-      <= 14 => ('Due $date — ${_fmtDays(left)} left', _inkAmber),
-      _ => ('Due $date — ${_fmtDays(left)} left', _inkFaded),
+      < 0 => ('Due $date — ${_fmtDays(-left)} overdue', _red),
+      0 => ('Due today', _red),
+      <= 14 => ('Due $date — ${_fmtDays(left)} left', _amber),
+      _ => ('Due $date — ${_fmtDays(left)} left', _textSecondary),
     };
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
+      padding: const EdgeInsets.only(bottom: 8),
       child: Row(
         children: [
-          Icon(Icons.hourglass_bottom, size: 15, color: color),
-          const SizedBox(width: 6),
+          Icon(CupertinoIcons.calendar, size: 15, color: color),
+          const SizedBox(width: 8),
           Expanded(
             child: Text(
               text,
-              style: _type(14, color: color, style: FontStyle.italic),
+              style: _type(13.5, color: color, weight: FontWeight.w500),
             ),
           ),
         ],
@@ -813,20 +545,22 @@ class _PaceLine extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final onTrack = quest.pace == QuestPace.onTrack;
-    final color = onTrack ? _inkGreen : _inkAmber;
+    final color = onTrack ? _mint : _amber;
     final elapsed = quest.timeElapsedFraction;
     final done = quest.objectiveFraction;
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
+      padding: const EdgeInsets.only(bottom: 8),
       child: Row(
         children: [
           Icon(
-            onTrack ? Icons.trending_up : Icons.trending_down,
+            onTrack
+                ? CupertinoIcons.arrow_up_right
+                : CupertinoIcons.arrow_down_right,
             size: 15,
             color: color,
           ),
-          const SizedBox(width: 6),
+          const SizedBox(width: 8),
           Expanded(
             child: Text(
               [
@@ -835,7 +569,7 @@ class _PaceLine extends StatelessWidget {
                   '${(done * 100).round()}% done, '
                       '${(elapsed * 100).round()}% of the time gone',
               ].join(' — '),
-              style: _type(14, color: color, style: FontStyle.italic),
+              style: _type(13.5, color: color, weight: FontWeight.w500),
             ),
           ),
         ],
@@ -859,53 +593,41 @@ class _RewardLine extends StatelessWidget {
     final cost = quest.rewardCostCents;
 
     final (icon, note) = claimed
-        ? (Icons.check_circle_outline, 'Claimed')
+        ? (CupertinoIcons.checkmark_circle, 'Claimed')
         : claimable
-            ? (Icons.card_giftcard, 'Ready to claim')
-            : (Icons.lock_outline, 'Locked until fulfilled');
+            ? (CupertinoIcons.gift, 'Ready to claim')
+            : (CupertinoIcons.lock, 'Locked until fulfilled');
 
     return Container(
-      margin: const EdgeInsets.only(top: 4, bottom: 4),
-      padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+      margin: const EdgeInsets.only(top: 2, bottom: 4),
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
       decoration: BoxDecoration(
-        color: _ink.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(2),
-        border: Border.all(color: _ink.withValues(alpha: 0.3)),
+        color: _panelRaised,
+        borderRadius: BorderRadius.circular(14),
       ),
       child: Row(
         children: [
-          Icon(icon, size: 17, color: claimable ? _inkGreen : _inkFaded),
-          const SizedBox(width: 9),
+          Icon(icon, size: 18, color: claimable ? _mint : _textSecondary),
+          const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'REWARD',
-                  style: _type(
-                    9,
-                    color: _inkFaded,
-                    weight: FontWeight.w700,
-                    spacing: 2.4,
-                  ),
-                ),
-                const SizedBox(height: 2),
+                Text('REWARD', style: _label(_textMuted, size: 9.5)),
+                const SizedBox(height: 3),
                 Text(
                   quest.rewardText!,
                   style: _type(
                     15,
                     weight: FontWeight.w700,
-                    color: claimed ? _inkFaded : _ink,
+                    color: claimed ? _textMuted : _textPrimary,
                     decoration: claimed ? TextDecoration.lineThrough : null,
                   ),
                 ),
+                const SizedBox(height: 1),
                 Text(
                   note,
-                  style: _type(
-                    11.5,
-                    color: claimable ? _inkGreen : _inkFaded,
-                    style: FontStyle.italic,
-                  ),
+                  style: _type(12, color: claimable ? _mint : _textSecondary),
                 ),
               ],
             ),
@@ -920,10 +642,10 @@ class _RewardLine extends StatelessWidget {
             ),
           if (claimable && onClaim != null) ...[
             const SizedBox(width: 10),
-            _InkButton(
-              icon: Icons.card_giftcard,
+            _PillButton(
+              icon: CupertinoIcons.gift,
               label: 'Claim',
-              color: _inkGreen,
+              color: _mint,
               onTap: onClaim!,
             ),
           ],
@@ -942,41 +664,45 @@ class PostQuestSlip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.only(bottom: 8),
-        child: Transform.rotate(
-          angle: 0.7 * pi / 180,
-          child: Opacity(
-            opacity: 0.72,
-            child: Stack(
-              fit: StackFit.passthrough,
-              clipBehavior: Clip.none,
+    const shape = RoundedRectangleBorder(
+      borderRadius: BorderRadius.all(Radius.circular(20)),
+      side: BorderSide(color: _hairline),
+    );
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Material(
+        color: Colors.transparent,
+        shape: shape,
+        child: InkWell(
+          onTap: onTap,
+          customBorder: shape,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 18),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                _Parchment(
-                  padding: const EdgeInsets.symmetric(vertical: 22),
-                  child: Column(
-                    children: [
-                      const Icon(Icons.add, size: 24, color: _inkFaded),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Post a new quest',
-                        style: _type(
-                          17,
-                          color: _inkFaded,
-                          weight: FontWeight.w700,
-                          style: FontStyle.italic,
-                        ),
-                      ),
-                    ],
+                Container(
+                  width: 28,
+                  height: 28,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: _mint.withValues(alpha: 0.14),
+                  ),
+                  child: const Icon(
+                    CupertinoIcons.plus,
+                    size: 16,
+                    color: _mint,
                   ),
                 ),
-                const Positioned(
-                  top: -7,
-                  left: 0,
-                  right: 0,
-                  child: Center(child: _Pin()),
+                const SizedBox(width: 10),
+                Text(
+                  'Post a new quest',
+                  style: _type(
+                    15,
+                    color: _textSecondary,
+                    weight: FontWeight.w600,
+                  ),
                 ),
               ],
             ),
@@ -994,15 +720,11 @@ class EmptyBoardNote extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 22),
+      padding: const EdgeInsets.only(top: 8, bottom: 24),
       child: Text(
         'Nothing is posted. The board is waiting.',
         textAlign: TextAlign.center,
-        style: _type(
-          14,
-          color: _chalk.withValues(alpha: 0.55),
-          style: FontStyle.italic,
-        ),
+        style: _type(14, color: _textMuted),
       ),
     );
   }
@@ -1010,7 +732,7 @@ class EmptyBoardNote extends StatelessWidget {
 
 // ── Fulfilled ─────────────────────────────────────────────────────────────────
 
-/// Finished notices, kept below the open ones and folded away by default.
+/// Finished quests, kept below the open ones and folded away by default.
 class FulfilledShelf extends StatefulWidget {
   final List<Quest> quests;
   final ValueChanged<Quest> onReopen;
@@ -1034,9 +756,6 @@ class _FulfilledShelfState extends State<FulfilledShelf> {
 
   @override
   Widget build(BuildContext context) {
-    final line = Expanded(
-      child: Container(height: 1, color: _chalk.withValues(alpha: 0.15)),
-    );
     // A prize waiting to be collected should not hide behind the fold.
     final waiting = widget.quests.where((q) => q.isRewardClaimable).length;
 
@@ -1047,30 +766,40 @@ class _FulfilledShelfState extends State<FulfilledShelf> {
           behavior: HitTestBehavior.opaque,
           onTap: () => setState(() => _open = !_open),
           child: Padding(
-            padding: const EdgeInsets.only(top: 16, bottom: 14),
+            padding: const EdgeInsets.fromLTRB(4, 22, 4, 14),
             child: Row(
               children: [
-                line,
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 10),
-                  child: Text(
-                    'FULFILLED  ·  ${widget.quests.length}'
-                    '${waiting > 0 ? '  ·  $waiting TO CLAIM' : ''}',
-                    style: _type(
-                      11,
-                      color: _chalk.withValues(alpha: 0.65),
-                      weight: FontWeight.w700,
-                      spacing: 2.6,
+                Text('FULFILLED', style: _label(_textSecondary, size: 11)),
+                const SizedBox(width: 8),
+                Text(
+                  '${widget.quests.length}',
+                  style: _label(_textMuted, size: 11),
+                ),
+                if (waiting > 0) ...[
+                  const SizedBox(width: 10),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 3,
+                    ),
+                    decoration: BoxDecoration(
+                      color: _mint.withValues(alpha: 0.14),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      '$waiting TO CLAIM',
+                      style: _label(_mint, size: 9.5),
                     ),
                   ),
-                ),
+                ],
+                const Spacer(),
                 Icon(
-                  _open ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
-                  size: 18,
-                  color: _chalk.withValues(alpha: 0.55),
+                  _open
+                      ? CupertinoIcons.chevron_up
+                      : CupertinoIcons.chevron_down,
+                  size: 16,
+                  color: _textSecondary,
                 ),
-                const SizedBox(width: 6),
-                line,
               ],
             ),
           ),
@@ -1107,112 +836,82 @@ class _FulfilledNotice extends StatelessWidget {
     final rank = _rankColors[q.difficulty]!;
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 18),
-      child: Transform.rotate(
-        angle: _tiltFor(q.id),
-        child: Stack(
-          // Pass the board's width through, so every notice spans it.
-          fit: StackFit.passthrough,
-          clipBehavior: Clip.none,
+      padding: const EdgeInsets.only(bottom: 12),
+      child: _Panel(
+        padding: const EdgeInsets.fromLTRB(18, 16, 18, 14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _Parchment(
-              padding: const EdgeInsets.fromLTRB(16, 18, 6, 4),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.only(right: 110),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '${q.difficulty.displayName.toUpperCase()} QUEST',
-                          style: _type(
-                            9.5,
-                            color: rank.withValues(alpha: 0.8),
-                            weight: FontWeight.w700,
-                            spacing: 2.4,
-                          ),
-                        ),
-                        const SizedBox(height: 3),
-                        Text(
-                          q.title,
-                          style: _type(
-                            18,
-                            weight: FontWeight.w700,
-                            color: _ink.withValues(alpha: 0.8),
-                            height: 1.15,
-                          ),
-                        ),
-                        if (q.completedAt != null) ...[
-                          const SizedBox(height: 3),
-                          Text(
-                            'Fulfilled ${_fmtDate(q.completedAt!.toLocal())}',
-                            style: _type(
-                              12.5,
-                              color: _inkFaded,
-                              style: FontStyle.italic,
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                  if (q.hasReward)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 8, right: 10),
-                      child: _RewardLine(quest: q, onClaim: onClaimReward),
-                    ),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _InkIcon(
-                        icon: Icons.replay,
-                        tooltip: 'Reopen',
-                        onTap: onReopen,
+                      Text(
+                        '${q.difficulty.displayName.toUpperCase()} QUEST',
+                        style: _label(rank.withValues(alpha: 0.75), size: 10),
                       ),
-                      _InkIcon(
-                        icon: Icons.close,
-                        tooltip: 'Tear down',
-                        onTap: onDelete,
-                        color: _inkRed,
+                      const SizedBox(height: 5),
+                      Text(
+                        q.title,
+                        style: _type(
+                          17,
+                          weight: FontWeight.w700,
+                          color: _textSecondary,
+                          spacing: -0.2,
+                          height: 1.2,
+                        ),
                       ),
+                      if (q.completedAt != null) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          'Fulfilled ${_fmtDate(q.completedAt!.toLocal())}',
+                          style: _type(12.5, color: _textMuted),
+                        ),
+                      ],
                     ],
                   ),
-                ],
+                ),
+                const SizedBox(width: 12),
+                Semantics(
+                  label: 'Fulfilled',
+                  child: const _Badge(
+                    color: _mint,
+                    child: Icon(
+                      CupertinoIcons.checkmark,
+                      size: 16,
+                      color: _mint,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            if (q.hasReward)
+              Padding(
+                padding: const EdgeInsets.only(top: 12),
+                child: _RewardLine(quest: q, onClaim: onClaimReward),
               ),
+            const SizedBox(height: 10),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                _CircleIconButton(
+                  icon: CupertinoIcons.arrow_counterclockwise,
+                  tooltip: 'Reopen',
+                  onTap: onReopen,
+                ),
+                const SizedBox(width: 8),
+                _CircleIconButton(
+                  icon: CupertinoIcons.trash,
+                  tooltip: 'Tear down',
+                  onTap: onDelete,
+                  color: _red,
+                ),
+              ],
             ),
-            const Positioned(
-              top: -7,
-              left: 0,
-              right: 0,
-              child: Center(child: _Pin()),
-            ),
-            const Positioned(top: 22, right: 16, child: _Stamp()),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _Stamp extends StatelessWidget {
-  const _Stamp();
-
-  @override
-  Widget build(BuildContext context) {
-    final red = _inkRed.withValues(alpha: 0.8);
-    return Transform.rotate(
-      angle: -0.24,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(3),
-          border: Border.all(color: red, width: 2),
-        ),
-        child: Text(
-          'FULFILLED',
-          style: _type(13, color: red, weight: FontWeight.w800, spacing: 2),
         ),
       ),
     );
