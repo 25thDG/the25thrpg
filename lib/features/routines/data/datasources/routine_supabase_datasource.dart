@@ -29,8 +29,8 @@ class RoutineSupabaseDatasource {
   /// completions. Joining in Postgres would return the routine row once per
   /// completion, which is far more data for no gain at this size.
   Future<RoutineBoard> getBoard() async {
-    final since = dayOf(DateTime.now())
-        .subtract(const Duration(days: kCompletionWindowDays));
+    final since =
+        routineToday().subtract(const Duration(days: kCompletionWindowDays));
 
     final [routineRows, habitRows, doneRows] = await Future.wait([
       _client
@@ -168,8 +168,9 @@ class RoutineSupabaseDatasource {
       'user_id': _userId,
       'name': name,
       'sort_order': sortOrder,
-      // Today, so the rule never judges the days before it existed.
-      'starts_on': dateKey(dayOf(DateTime.now())),
+      // The routine day in progress, so a habit added at 01:00 can be ticked
+      // straight away rather than starting tomorrow.
+      'starts_on': dateKey(routineToday()),
     });
   }
 

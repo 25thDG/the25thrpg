@@ -37,6 +37,62 @@ Habit habit({
 }
 
 void main() {
+  group('4am rollover', () {
+    test('just before 04:00 still belongs to the day that is ending', () {
+      // 03:59 on the 10th is still the 9th's routine day.
+      expect(routineDayOf(DateTime(2026, 8, 10, 3, 59)), DateTime(2026, 8, 9));
+    });
+
+    test('04:00 exactly starts the new day', () {
+      expect(routineDayOf(DateTime(2026, 8, 10, 4)), DateTime(2026, 8, 10));
+    });
+
+    test('a late-night tick counts for the night that is ending', () {
+      // 01:30 after a long evening — the night routine is still last night's.
+      expect(routineDayOf(DateTime(2026, 8, 10, 1, 30)), DateTime(2026, 8, 9));
+    });
+
+    test('midnight itself belongs to the previous day', () {
+      expect(routineDayOf(DateTime(2026, 8, 10)), DateTime(2026, 8, 9));
+    });
+
+    test('the rest of the day is unaffected', () {
+      expect(routineDayOf(DateTime(2026, 8, 10, 9)), DateTime(2026, 8, 10));
+      expect(routineDayOf(DateTime(2026, 8, 10, 23, 59)), DateTime(2026, 8, 10));
+    });
+
+    test('the next rollover is 04:00 on the following calendar day', () {
+      expect(
+        nextRolloverAfter(DateTime(2026, 8, 9)),
+        DateTime(2026, 8, 10, 4),
+      );
+    });
+
+    test('rollover crosses a month end without arithmetic on hours', () {
+      expect(
+        nextRolloverAfter(DateTime(2026, 8, 31)),
+        DateTime(2026, 9, 1, 4),
+      );
+    });
+
+    test('a habit ticked at 01:00 keeps the streak it would have broken', () {
+      // Kept the 8th and the 9th; it is now 01:00 on the 10th and the habit is
+      // ticked. Under a midnight rollover that tick would land on the 10th and
+      // the 9th would read as missed. It must land on the 9th instead.
+      final now = DateTime(2026, 8, 10, 1);
+      final day = routineDayOf(now);
+      expect(day, DateTime(2026, 8, 9));
+
+      final s = evaluateFoundation(
+        completions: {DateTime(2026, 8, 8), day},
+        startsOn: DateTime(2026, 8, 1),
+        today: day,
+      );
+      expect(s.state, FoundationState.solid);
+      expect(s.streak, 2);
+    });
+  });
+
   group('two-day rule', () {
     test('done today is solid whatever came before', () {
       final s = evaluate([true, false, false, false]);
@@ -144,6 +200,19 @@ void main() {
       final s = evaluate([true, true, true, true, true]);
       expect(s.settledDays, 5);
       expect(s.keepRate, 1.0);
+    });
+
+    test('a habit starting after today never reports negative settled days', () {
+      // Possible from a row written under the old midnight rule, or a clock
+      // change. It must read as brand new rather than as nonsense.
+      final s = evaluateFoundation(
+        completions: const {},
+        startsOn: DateTime(2026, 8, 11),
+        today: DateTime(2026, 8, 9),
+      );
+      expect(s.settledDays, 0);
+      expect(s.keepRate, isNull);
+      expect(s.state, FoundationState.open);
     });
 
     test('is null on a habit with no settled day yet', () {

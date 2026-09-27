@@ -85,6 +85,10 @@ class HabitStrip extends StatelessWidget {
                 // Before the habit existed — not a miss, just not applicable.
                 null => RpgColors.progressTrack.withValues(alpha: 0.4),
                 true => FoundationColors.solid,
+                // Today is never a miss until it is over, so the last pip stays
+                // neutral rather than accusing you at nine in the morning.
+                false when i == strip.length - 1 =>
+                  RpgColors.progressTrack.withValues(alpha: 0.9),
                 false => FoundationColors.broken.withValues(alpha: 0.55),
               },
             ),

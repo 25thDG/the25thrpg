@@ -97,8 +97,32 @@ class FoundationStatus {
   bool get isLastChance => state == FoundationState.cracked;
 }
 
+/// The hour a routine day rolls over to the next one.
+///
+/// Not midnight. A habit ticked at two in the morning belongs to the day that
+/// is ending, not the one that has technically started — going to bed late must
+/// not cost a streak, and a night routine done at 01:30 is that night's.
+const kDayRollHour = 4;
+
 /// Strips a timestamp down to a local calendar day.
 DateTime dayOf(DateTime t) => DateTime(t.year, t.month, t.day);
+
+/// The routine day [t] falls in. Anything before [kDayRollHour] still belongs
+/// to the previous day.
+DateTime routineDayOf(DateTime t) =>
+    dayOf(t.subtract(const Duration(hours: kDayRollHour)));
+
+/// The routine day right now. Use this, never `dayOf(DateTime.now())` — the
+/// two differ for four hours out of every twenty-four.
+DateTime routineToday() => routineDayOf(DateTime.now());
+
+/// When the routine day after [day] begins, as a local wall-clock time.
+///
+/// Built with the DateTime constructor rather than by adding a Duration, so
+/// month ends and daylight saving are handled by the calendar rather than by
+/// arithmetic on elapsed hours.
+DateTime nextRolloverAfter(DateTime day) =>
+    DateTime(day.year, day.month, day.day + 1, kDayRollHour);
 
 /// Applies the two-day rule.
 ///
@@ -144,8 +168,11 @@ FoundationStatus evaluateFoundation({
   }
 
   // Yesterday is the last judged day; today joins it only once it is ticked.
+  // Clamped because a habit can start after the current routine day — a clock
+  // change, or a row written under the old midnight rule — and a negative
+  // count would turn the keep rate into nonsense.
   final elapsed = t.difference(start).inDays;
-  final settled = doneToday ? elapsed + 1 : elapsed;
+  final settled = (doneToday ? elapsed + 1 : elapsed).clamp(0, 1 << 31);
 
   final state = doneToday
       ? FoundationState.solid

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
 import '../../application/use_cases/routine_use_cases.dart';
@@ -11,8 +13,12 @@ class RoutineController extends ChangeNotifier {
   final ToggleHabitUseCase _toggleHabit;
   final EditRoutinesUseCase _edit;
 
-  RoutineState _state = RoutineState(today: dayOf(DateTime.now()));
+  RoutineState _state = RoutineState(today: routineToday());
   RoutineState get state => _state;
+
+  /// Fires at the next 04:00 so an app left open overnight does not keep
+  /// showing yesterday's board.
+  Timer? _rollover;
 
   RoutineController({
     required GetRoutineBoardUseCase getBoard,
@@ -22,6 +28,12 @@ class RoutineController extends ChangeNotifier {
         _toggleHabit = toggleHabit,
         _edit = edit;
 
+  @override
+  void dispose() {
+    _rollover?.cancel();
+    super.dispose();
+  }
+
   void _emit(RoutineState s) {
     _state = s;
     notifyListeners();
@@ -30,8 +42,9 @@ class RoutineController extends ChangeNotifier {
   Future<void> load() async {
     _emit(_state.copyWith(
       status: RoutineLoadStatus.loading,
-      today: dayOf(DateTime.now()),
+      today: routineToday(),
     ));
+    _scheduleRollover();
     try {
       final board = await _getBoard();
       _emit(_state.copyWith(
@@ -52,7 +65,14 @@ class RoutineController extends ChangeNotifier {
   /// The board is updated before the write goes out — a habit tick has to feel
   /// instant, and the worst case is one tile that snaps back on the reload.
   Future<void> toggle(Habit habit) async {
-    final day = _state.today;
+    // Resolved at the moment of the tap rather than read from state: if the
+    // screen has been sitting open across 04:00, the tick belongs to the new
+    // day, not the one the board was built for.
+    final day = routineToday();
+    if (day != _state.today) {
+      await load();
+      return;
+    }
     final done = !habit.isDoneOn(day);
 
     _emit(_state.copyWith(board: _replace(habit.id, (h) => h.withCompletion(day, done))));
@@ -66,6 +86,12 @@ class RoutineController extends ChangeNotifier {
       ));
       rethrow;
     }
+  }
+
+  void _scheduleRollover() {
+    _rollover?.cancel();
+    final due = nextRolloverAfter(_state.today).difference(DateTime.now());
+    _rollover = Timer(due.isNegative ? Duration.zero : due, load);
   }
 
   /// Swaps one habit for an edited copy, leaving everything else alone.

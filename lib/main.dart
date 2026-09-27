@@ -9,6 +9,7 @@ import 'features/japanese/presentation/pages/japanese_page.dart';
 import 'features/mindfulness/presentation/pages/mindfulness_page.dart';
 import 'features/player/presentation/pages/player_page.dart';
 import 'features/quests/presentation/pages/quests_page.dart';
+import 'features/routines/domain/entities/foundation.dart';
 import 'features/routines/presentation/controllers/routine_controller.dart';
 import 'features/routines/presentation/pages/routines_page.dart';
 import 'features/routines/presentation/widgets/routine_tab_icon.dart';
@@ -58,8 +59,9 @@ class _ShellState extends State<_Shell> with WidgetsBindingObserver {
   /// without the page being open.
   late final RoutineController _routines;
 
-  /// The day the routines were last loaded for. Coming back to the app after
-  /// midnight has to reset the board, or yesterday's ticks read as today's.
+  /// The routine day the board was last loaded for. Coming back to the app
+  /// after the 04:00 rollover has to reset it, or yesterday's ticks read as
+  /// today's.
   late DateTime _loadedFor;
 
   late final List<Widget> _pages;
@@ -95,9 +97,9 @@ class _ShellState extends State<_Shell> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state != AppLifecycleState.resumed) return;
 
-    // Only worth a round trip when the date actually turned over.
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
+    // Only worth a round trip when the routine day actually turned over —
+    // which happens at 04:00, not midnight.
+    final today = routineToday();
     if (today == _loadedFor) return;
 
     _loadedFor = today;

@@ -7,8 +7,9 @@ class RoutineState {
   final RoutineBoard board;
   final String? errorMessage;
 
-  /// The day the board is being shown for. Always today in practice, but held
-  /// as state so the whole screen agrees on one "now" while it is open.
+  /// The routine day the board is being shown for — which is not the calendar
+  /// date between midnight and 04:00. Held as state so the whole screen agrees
+  /// on one "today" while it is open.
   final DateTime today;
 
   const RoutineState({

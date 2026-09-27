@@ -50,6 +50,24 @@ line is comfortable.
 Also: do not add an upper bound to the minutes input — it would block this
 workflow entirely.
 
+### 3. The routine day starts at 04:00, not midnight
+
+Foundations does not use the calendar date. A routine day runs 04:00 → 04:00,
+so between midnight and four in the morning "today" is still the day that is
+ending.
+
+This is deliberate: going to bed late must not cost a streak, and a night
+routine finished at 01:30 belongs to that night. It also means a habit ticked at
+02:00 is written against yesterday's date, which is correct, not a timezone bug.
+
+The rule lives in `kDayRollHour` / `routineDayOf` in
+`lib/features/routines/domain/entities/foundation.dart`. Nothing in that feature
+may call `dayOf(DateTime.now())` — use `routineToday()`, or the two will
+disagree for four hours out of every twenty-four.
+
+Only Foundations works this way. Japanese, Mindfulness and the analysis screens
+still bucket by calendar date.
+
 ## Structure
 
 Clean architecture per feature, under `lib/features/<name>/`:
