@@ -16,12 +16,16 @@ class BudgetSummary {
   /// Total spent in the previous calendar month (null if unavailable).
   final int? previousMonthSpentCents;
 
+  /// Imported rows not yet reviewed, from any month.
+  final List<BudgetTransaction> needsReview;
+
   const BudgetSummary({
     required this.totalSpentCents,
     required this.categoryTotals,
     required this.transactions,
     required this.allCategories,
     this.previousMonthSpentCents,
+    this.needsReview = const [],
   });
 
   double get spentFraction =>

@@ -49,7 +49,7 @@ class TodayStatusDatasource {
           .isFilter('deleted_at', null),
       _client
           .from('budget_transactions')
-          .select('amount_cents')
+          .select('amount_cents, kind')
           .eq('user_id', _userId)
           .gte('spent_at', todayStart)
           .lt('spent_at', tomorrowStart)
@@ -76,7 +76,8 @@ class TodayStatusDatasource {
 
     int budgetCents = 0;
     for (final row in (budgetRes as List).cast<Map<String, dynamic>>()) {
-      budgetCents += (row['amount_cents'] as int? ?? 0);
+      final cents = row['amount_cents'] as int? ?? 0;
+      budgetCents += row['kind'] == 'refund' ? -cents : cents;
     }
 
     return TodayStatus(

@@ -16,12 +16,17 @@ class BudgetTransactionList extends StatelessWidget {
     required DateTime spentAt,
   }) onUpdate;
   final Future<String?> Function(String id) onDelete;
+  final Future<String?> Function({
+    required String keyword,
+    required String categoryId,
+  }) onAddRule;
 
   const BudgetTransactionList({
     super.key,
     required this.summary,
     required this.onUpdate,
     required this.onDelete,
+    required this.onAddRule,
   });
 
   @override
@@ -99,6 +104,7 @@ class BudgetTransactionList extends StatelessWidget {
 
   void _showEditSheet(
       BuildContext context, BudgetTransaction tx, BudgetCategory? cat) {
+    final messenger = ScaffoldMessenger.of(context);
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -111,13 +117,48 @@ class BudgetTransactionList extends StatelessWidget {
           required amountCents,
           note,
           required spentAt,
-        }) =>
-            onUpdate(
-          id: tx.id,
-          categoryId: categoryId,
-          amountCents: amountCents,
-          note: note,
-          spentAt: spentAt,
+        }) async {
+          final error = await onUpdate(
+            id: tx.id,
+            categoryId: categoryId,
+            amountCents: amountCents,
+            note: note,
+            spentAt: spentAt,
+          );
+          if (error == null && tx.isImported && categoryId != tx.categoryId) {
+            _offerRule(messenger, tx.bankDescription!, categoryId);
+          }
+          return error;
+        },
+      ),
+    );
+  }
+
+  void _offerRule(
+      ScaffoldMessengerState messenger, String merchant, String categoryId) {
+    final category =
+        summary.allCategories.where((c) => c.id == categoryId).firstOrNull;
+    if (category == null) return;
+    messenger.showSnackBar(
+      SnackBar(
+        duration: const Duration(seconds: 8),
+        backgroundColor: const Color(0xFF1A1A20),
+        content: Text(
+          'Always categorize $merchant as ${category.name}?',
+          style: const TextStyle(color: RpgColors.textPrimary),
+        ),
+        action: SnackBarAction(
+          label: 'ALWAYS',
+          textColor: const Color(0xFF4FC3F7),
+          onPressed: () async {
+            final error =
+                await onAddRule(keyword: merchant, categoryId: categoryId);
+            if (error != null) {
+              messenger.showSnackBar(SnackBar(
+                  content: Text(error),
+                  backgroundColor: const Color(0xFFEF5350)));
+            }
+          },
         ),
       ),
     );
@@ -217,10 +258,11 @@ class _TransactionRow extends StatelessWidget {
                         fontWeight: FontWeight.w500,
                       ),
                     ),
-                    if (transaction.note != null) ...[
+                    if ((transaction.note ?? transaction.bankDescription) !=
+                        null) ...[
                       const SizedBox(height: 2),
                       Text(
-                        transaction.note!,
+                        transaction.note ?? transaction.bankDescription!,
                         style: const TextStyle(
                           color: RpgColors.textMuted,
                           fontSize: 11,
@@ -236,7 +278,7 @@ class _TransactionRow extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(
-                    '€${transaction.amountEur.toStringAsFixed(2)}',
+                    '${transaction.isRefund ? '+' : ''}€${transaction.amountEur.toStringAsFixed(2)}',
                     style: TextStyle(
                       color: color,
                       fontSize: 14,

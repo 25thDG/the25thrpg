@@ -5,15 +5,19 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../../core/theme/rpg_colors.dart';
+import '../../application/use_cases/add_category_rule_use_case.dart';
 import '../../application/use_cases/add_category_use_case.dart';
 import '../../application/use_cases/add_transaction_use_case.dart';
 import '../../application/use_cases/delete_category_use_case.dart';
 import '../../application/use_cases/delete_transaction_use_case.dart';
 import '../../application/use_cases/export_transactions_use_case.dart';
 import '../../application/use_cases/get_budget_summary_use_case.dart';
+import '../../application/use_cases/import_statement_use_case.dart';
+import '../../application/use_cases/review_transaction_use_case.dart';
 import '../../application/use_cases/update_category_use_case.dart';
 import '../../application/use_cases/update_transaction_use_case.dart';
 import '../../data/datasources/budget_supabase_datasource.dart';
+import '../../data/datasources/statement_pdf_datasource.dart';
 import '../../data/repositories/budget_repository_impl.dart';
 import '../../domain/entities/budget_summary.dart';
 import '../controllers/budget_controller.dart';
@@ -24,6 +28,7 @@ import '../widgets/budget_category_chart.dart';
 import '../widgets/budget_gauge.dart';
 import '../widgets/budget_transaction_list.dart';
 import '../widgets/manage_categories_sheet.dart';
+import '../widgets/statement_review_sheet.dart';
 
 class BudgetPage extends StatefulWidget {
   const BudgetPage({super.key});
@@ -49,6 +54,10 @@ class _BudgetPageState extends State<BudgetPage> {
       updateCategory: UpdateCategoryUseCase(repo),
       deleteCategory: DeleteCategoryUseCase(repo),
       exportTransactions: ExportTransactionsUseCase(repo),
+      addCategoryRule: AddCategoryRuleUseCase(repo),
+      importStatement:
+          ImportStatementUseCase(repo, const StatementPdfDatasource()),
+      reviewTransaction: ReviewTransactionUseCase(repo),
     );
     _controller.load();
   }
@@ -213,6 +222,116 @@ class _BudgetPageState extends State<BudgetPage> {
     }
   }
 
+  Future<void> _importStatement(BuildContext context) async {
+    final picked = await FilePicker.platform.pickFiles(
+      dialogTitle: 'Pick a Trade Republic statement',
+      type: FileType.custom,
+      allowedExtensions: const ['pdf'],
+      withData: true,
+    );
+    final bytes = picked?.files.single.bytes;
+    if (bytes == null || !context.mounted) return;
+
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.showSnackBar(
+      const SnackBar(
+        duration: Duration(seconds: 30),
+        backgroundColor: Color(0xFF1A1A20),
+        content: Row(
+          children: [
+            SizedBox(
+              width: 14,
+              height: 14,
+              child: CircularProgressIndicator(
+                strokeWidth: 1.5,
+                color: Color(0xFF4FC3F7),
+              ),
+            ),
+            SizedBox(width: 12),
+            Text('Importing statement…',
+                style: TextStyle(color: RpgColors.textPrimary)),
+          ],
+        ),
+      ),
+    );
+
+    final (:result, :error) = await _controller.importStatement(bytes);
+    messenger.hideCurrentSnackBar();
+    if (!context.mounted) return;
+
+    if (result == null) {
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: RpgColors.panelBg,
+          title: const Text('Import rejected',
+              style: TextStyle(color: RpgColors.textPrimary, fontSize: 15)),
+          content: Text(error ?? 'Unknown error.',
+              style: const TextStyle(
+                  color: RpgColors.textSecondary, fontSize: 12)),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('OK',
+                  style: TextStyle(color: Color(0xFF4FC3F7))),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
+    messenger.showSnackBar(
+      SnackBar(
+        duration: const Duration(seconds: 8),
+        backgroundColor: const Color(0xFF1A1A20),
+        content: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              '${result.added} new · ${result.matched} matched · '
+              '${result.duplicates} already imported',
+              style: const TextStyle(
+                color: Color(0xFF4FC3F7),
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              '${result.parsed} rows · ${result.topUps} top ups excluded'
+              '${result.skipped > 0 ? ' · ${result.skipped} other rows skipped' : ''}'
+              '${result.uncategorized > 0 ? ' · ${result.uncategorized} uncategorized' : ''}',
+              style: const TextStyle(
+                color: RpgColors.textSecondary,
+                fontSize: 11,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    final summary = _controller.state.summary;
+    if (summary != null && summary.needsReview.isNotEmpty) {
+      _showReview(context, summary);
+    }
+  }
+
+  void _showReview(BuildContext context, BudgetSummary summary) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (_) => StatementReviewSheet(
+        transactions: summary.needsReview,
+        categories: summary.allCategories,
+        onReview: _controller.reviewTransaction,
+        onAddRule: _controller.addCategoryRule,
+      ),
+    ).whenComplete(_controller.load);
+  }
+
   void _showCategories(BuildContext context, BudgetSummary summary) {
     showModalBottomSheet(
       context: context,
@@ -274,6 +393,12 @@ class _BudgetPageState extends State<BudgetPage> {
                         ),
                       ),
                     ),
+                  IconButton(
+                    icon: const Icon(Icons.upload_file_outlined, size: 18),
+                    color: RpgColors.textMuted,
+                    tooltip: 'Import bank statement',
+                    onPressed: () => _importStatement(context),
+                  ),
                   IconButton(
                     icon: const Icon(Icons.file_download_outlined, size: 18),
                     color: RpgColors.textMuted,
@@ -391,6 +516,15 @@ class _BudgetPageState extends State<BudgetPage> {
                 ),
                 const SizedBox(height: 16),
 
+                // ── Imported rows to review ─────────────────────────────
+                if (summary.needsReview.isNotEmpty) ...[
+                  _ReviewBanner(
+                    count: summary.needsReview.length,
+                    onTap: () => _showReview(context, summary),
+                  ),
+                  const SizedBox(height: 14),
+                ],
+
                 // ── Empty state: no categories ──────────────────────────
                 if (summary.allCategories.isEmpty)
                   _EmptyCategories(
@@ -434,6 +568,7 @@ class _BudgetPageState extends State<BudgetPage> {
                       spentAt: spentAt,
                     ),
                     onDelete: _controller.deleteTransaction,
+                    onAddRule: _controller.addCategoryRule,
                   ),
                 ],
               ]),
@@ -500,6 +635,55 @@ class _MonthNavigator extends StatelessWidget {
             constraints: const BoxConstraints(),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ── Review banner ─────────────────────────────────────────────────────────────
+
+class _ReviewBanner extends StatelessWidget {
+  final int count;
+  final VoidCallback onTap;
+
+  const _ReviewBanner({required this.count, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    const accent = Color(0xFFFF7043);
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Material(
+        color: accent.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(8),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(8),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: accent.withValues(alpha: 0.35)),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.fact_check_outlined, size: 16, color: accent),
+                const SizedBox(width: 10),
+                Text(
+                  '$count IMPORTED TO REVIEW',
+                  style: const TextStyle(
+                    color: accent,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 1.6,
+                  ),
+                ),
+                const Spacer(),
+                const Icon(Icons.chevron_right, size: 18, color: accent),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

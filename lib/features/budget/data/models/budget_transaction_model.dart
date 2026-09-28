@@ -11,6 +11,10 @@ class BudgetTransactionModel extends BudgetTransaction {
     required super.createdAt,
     required super.updatedAt,
     super.deletedAt,
+    super.kind,
+    super.needsReview,
+    super.bankKey,
+    super.bankDescription,
   });
 
   factory BudgetTransactionModel.fromMap(Map<String, dynamic> map) {
@@ -26,6 +30,12 @@ class BudgetTransactionModel extends BudgetTransaction {
       deletedAt: map['deleted_at'] != null
           ? DateTime.parse(map['deleted_at'] as String).toLocal()
           : null,
+      kind: map['kind'] == 'refund'
+          ? BudgetTransactionKind.refund
+          : BudgetTransactionKind.expense,
+      needsReview: map['needs_review'] as bool? ?? false,
+      bankKey: map['bank_key'] as String?,
+      bankDescription: map['bank_description'] as String?,
     );
   }
 }

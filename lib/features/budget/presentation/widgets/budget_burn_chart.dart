@@ -323,7 +323,7 @@ class BudgetBurnChart extends StatelessWidget {
     final Map<int, double> dailyMap = {};
     for (final tx in summary.transactions) {
       final day = tx.spentAt.day;
-      dailyMap[day] = (dailyMap[day] ?? 0) + tx.amountEur;
+      dailyMap[day] = (dailyMap[day] ?? 0) + tx.signedAmountCents / 100.0;
     }
 
     final actualSpots = <FlSpot>[const FlSpot(0, 0)];

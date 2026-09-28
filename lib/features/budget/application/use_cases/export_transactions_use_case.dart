@@ -50,7 +50,7 @@ class ExportTransactionsUseCase {
     );
 
     final totalCents =
-        transactions.fold<int>(0, (sum, t) => sum + t.amountCents);
+        transactions.fold<int>(0, (sum, t) => sum + t.signedAmountCents);
 
     return ExportBundle(
       bytes: Uint8List.fromList(bytes),
@@ -251,7 +251,7 @@ class ExportTransactionsUseCase {
 
       final amtCell =
           sheet.cell(CellIndex.indexByColumnRow(columnIndex: 2, rowIndex: row));
-      amtCell.value = DoubleCellValue(t.amountCents / 100.0);
+      amtCell.value = DoubleCellValue(t.signedAmountCents / 100.0);
       amtCell.cellStyle = currencyStyle(stripe: stripe);
 
       final noteCell =

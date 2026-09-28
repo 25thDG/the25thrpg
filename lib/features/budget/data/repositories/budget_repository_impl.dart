@@ -1,5 +1,6 @@
 import '../../domain/entities/budget_category.dart';
 import '../../domain/entities/budget_transaction.dart';
+import '../../domain/entities/category_rule.dart';
 import '../../domain/repositories/budget_repository.dart';
 import '../datasources/budget_supabase_datasource.dart';
 
@@ -76,4 +77,61 @@ class BudgetRepositoryImpl implements BudgetRepository {
   @override
   Future<void> deleteTransaction(String id) =>
       _datasource.deleteTransaction(id);
+
+  @override
+  Future<Set<String>> getBankKeys({
+    required DateTime from,
+    required DateTime to,
+  }) =>
+      _datasource.getBankKeys(from: from, to: to);
+
+  @override
+  Future<void> addImportedTransactions(List<NewImportedTransaction> rows) =>
+      _datasource.addImportedTransactions(rows);
+
+  @override
+  Future<List<BudgetTransaction>> getUnlinkedManualTransactions({
+    required DateTime start,
+    required DateTime end,
+  }) =>
+      _datasource.getUnlinkedManualTransactions(start: start, end: end);
+
+  @override
+  Future<void> linkTransaction({
+    required String id,
+    required int amountCents,
+    required String bankKey,
+    required String bankDescription,
+  }) =>
+      _datasource.linkTransaction(
+          id: id,
+          amountCents: amountCents,
+          bankKey: bankKey,
+          bankDescription: bankDescription);
+
+  @override
+  Future<List<BudgetTransaction>> getTransactionsNeedingReview() =>
+      _datasource.getTransactionsNeedingReview();
+
+  @override
+  Future<void> reviewTransaction({
+    required String id,
+    required String categoryId,
+    String? note,
+  }) =>
+      _datasource.reviewTransaction(
+          id: id, categoryId: categoryId, note: note);
+
+  @override
+  Future<List<CategoryRule>> getCategoryRules() =>
+      _datasource.getCategoryRules();
+
+  @override
+  Future<CategoryRule> addCategoryRule({
+    required String keyword,
+    required String categoryId,
+    required int priority,
+  }) =>
+      _datasource.addCategoryRule(
+          keyword: keyword, categoryId: categoryId, priority: priority);
 }
