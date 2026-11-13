@@ -5,6 +5,7 @@ import 'core/notifications/reminder_service.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/rpg_colors.dart';
 import 'features/budget/presentation/pages/budget_page.dart';
+import 'features/car/presentation/pages/car_page.dart';
 import 'features/japanese/presentation/pages/japanese_page.dart';
 import 'features/mindfulness/presentation/pages/mindfulness_page.dart';
 import 'features/player/presentation/pages/player_page.dart';
@@ -82,6 +83,7 @@ class _ShellState extends State<_Shell> with WidgetsBindingObserver {
       const MindfulnessPage(),
       const WealthPage(),
       const BudgetPage(),
+      const CarPage(),
       const QuestsPage(),
     ];
   }
@@ -118,6 +120,7 @@ class _ShellState extends State<_Shell> with WidgetsBindingObserver {
     _TabDef(icon: Icons.self_improvement_outlined, activeIcon: Icons.self_improvement, label: 'Mind'),
     _TabDef(icon: Icons.account_balance_outlined, activeIcon: Icons.account_balance, label: 'Wealth'),
     _TabDef(icon: Icons.wallet_outlined, activeIcon: Icons.wallet, label: 'Budget'),
+    _TabDef(icon: Icons.directions_car_outlined, activeIcon: Icons.directions_car, label: 'Car'),
     _TabDef(icon: Icons.map_outlined, activeIcon: Icons.map, label: 'Quests'),
   ];
 

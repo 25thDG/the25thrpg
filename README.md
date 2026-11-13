@@ -80,11 +80,29 @@ presentation/  pages, widgets, controllers, state
 ```
 
 Shipping features: `player`, `japanese`, `mindfulness`, `wealth`, `budget`,
-`quests`. They map one-to-one to the tabs in `lib/main.dart`.
+`car`, `quests`. They map one-to-one to the tabs in `lib/main.dart`.
 
 The level maths lives in `lib/features/player/domain/entities/skill_summary.dart`
 — every skill is square-root scaled toward a level-100 target, with mastery
 points beyond it.
+
+### Car
+
+The Car tab tracks the company car's odometer against its mileage contract. It
+is a plain tracker: it feeds no skill and nothing in `player` reads it.
+
+- The contract (handover date and odometer, term, yearly allowance, yearly hard
+  limit) is one row in `car_contracts`. Nothing about it is hardcoded in Dart.
+- Odometer readings live in `car_snapshots`, one per calendar day. A snapshot is
+  always dated today — saving again the same day replaces it, and an older typo
+  is fixed by deleting the row from the history list.
+- A contract year runs from the handover date to its anniversary, not January
+  to December. Years 2 and 3 count from the odometer on the anniversary,
+  interpolated between the snapshots either side of it.
+- Every figure is measured as of the latest snapshot's date, not today.
+  Otherwise days without a snapshot would count as days without driving.
+
+All of it is derived in `lib/features/car/domain/entities/car_stats.dart`.
 
 ### Removed features
 
